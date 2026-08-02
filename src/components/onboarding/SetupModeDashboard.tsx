@@ -188,10 +188,19 @@ export default function SetupModeDashboard() {
     {
       id: 'bank',
       label: t('bank_details'),
-      description: t('add_bank_upi'),
+      description: 'Account Number + IFSC + Holder Name OR UPI ID',
       icon: Building2,
-      completed: !!profile.upiId || !!(profile as any).accountNumber || !!profile.bankAccount,
+      completed: (!!profile.upiId && profile.upiId.length > 3) || (!!(profile as any).accountNumber && !!(profile as any).ifscCode && !!(profile as any).accountHolderName),
       href: '/vendor/onboarding/step2',
+      required: true,
+    },
+    {
+      id: 'bankProof',
+      label: 'Bank Proof Upload',
+      description: 'Cancelled cheque or passbook photo',
+      icon: FileText,
+      completed: !!(profile as any).bankDocUrl,
+      href: '/vendor/onboarding/step3',
       required: true,
     },
     {
