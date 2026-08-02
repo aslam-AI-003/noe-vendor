@@ -46,6 +46,10 @@ export async function PUT(request: NextRequest) {
       'shopName', 'shopNameTamil', 'phone', 'email', 'address', 'city', 'pincode',
       'gst', 'fssai', 'description', 'minOrder', 'deliveryRadius', 'prepTime',
       'operatingHours', 'holidayMode', 'upiId', 'accountNumber', 'ifsc', 'bankName',
+      // Document numbers
+      'fssaiNumber', 'gstNumber', 'panNumber',
+      // Document URLs
+      'fssaiUrl', 'gstUrl', 'panUrl', 'aadhaarUrl', 'bankDocUrl',
     ];
 
     editableKeys.forEach(key => {
