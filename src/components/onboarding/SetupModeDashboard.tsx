@@ -34,6 +34,7 @@ export default function SetupModeDashboard() {
   const { t } = useLanguage();
   const [profile, setProfile] = useState<Partial<VendorProfile> | null>(null);
   const [menuCount, setMenuCount] = useState(0);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
   const [hasHours, setHasHours] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -49,13 +50,15 @@ export default function SetupModeDashboard() {
         setHasHours(true);
       }
 
-      // Fetch menu item count
+      // Fetch menu items
       if (localProfile.id) {
         fetch(`/api/vendor/menu?vendorId=${localProfile.id}`)
           .then(r => r.json())
           .then(data => {
-            if (data.success && data.products) {
-              setMenuCount(data.products.length);
+            if (data.success && (data.items || data.products)) {
+              const items = data.items || data.products;
+              setMenuCount(items.length);
+              setMenuItems(items.slice(0, 5)); // Show first 5 in preview
             }
           })
           .catch(() => {});
@@ -407,9 +410,28 @@ export default function SetupModeDashboard() {
 
             {/* Menu preview */}
             <div className="mt-4 pt-3 border-t border-subtle">
-              <p className="text-[10px] font-bold text-muted mb-2">{t('menu_preview')}</p>
+              <p className="text-[10px] font-bold text-muted mb-2">{t('menu_preview')} {menuCount > 0 && <span className="text-faint">({menuCount} items)</span>}</p>
               <div className="space-y-1.5">
-                <p className="text-xs text-faint italic">{t('no_menu_yet')} <Link href="/dashboard/shop/menu" className="text-accent font-bold">{t('add_items_link')}</Link></p>
+                {menuItems.length > 0 ? (
+                  <>
+                    {menuItems.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between py-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-3 h-3 rounded-sm border ${item.isVeg !== false ? 'border-emerald-500 bg-emerald-500/20' : 'border-red-500 bg-red-500/20'}`}>
+                            <span className={`block w-1.5 h-1.5 rounded-full m-[2px] ${item.isVeg !== false ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                          </span>
+                          <span className="text-xs text-body font-medium">{item.name}</span>
+                        </div>
+                        <span className="text-xs font-bold text-accent">₹{item.discountPrice || item.price}</span>
+                      </div>
+                    ))}
+                    {menuCount > 5 && (
+                      <p className="text-[10px] text-faint text-center pt-1">+{menuCount - 5} more items</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-faint italic">{t('no_menu_yet')} <Link href="/dashboard/shop/menu" className="text-accent font-bold">{t('add_items_link')}</Link></p>
+                )}
               </div>
             </div>
           </div>
