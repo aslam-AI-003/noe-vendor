@@ -33,9 +33,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!fileType || !['shop_photo', 'aadhaar', 'pan', 'fssai', 'bank_proof'].includes(fileType)) {
+    if (!fileType || !['shop_photo', 'aadhaar', 'pan', 'fssai', 'gst', 'bank_proof'].includes(fileType)) {
       return NextResponse.json(
-        { success: false, error: 'Valid file type required (shop_photo, aadhaar, pan, fssai, bank_proof)' },
+        { success: false, error: 'Valid file type required (shop_photo, aadhaar, pan, fssai, gst, bank_proof)' },
         { status: 400 }
       );
     }

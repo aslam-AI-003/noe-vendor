@@ -387,6 +387,9 @@ interface DocItem {
 function DocumentsKYCSection() {
   const { t } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
+  const [uploading, setUploading] = useState<string | null>(null); // which doc is uploading
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [currentDocId, setCurrentDocId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('noe-vendor-profile');
@@ -394,6 +397,91 @@ function DocumentsKYCSection() {
       setProfile(JSON.parse(saved));
     }
   }, []);
+
+  // Handle Upload button click — opens file picker
+  const handleUploadClick = (docId: string) => {
+    setCurrentDocId(docId);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // Handle file selected — upload to Firebase Storage
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentDocId || !profile?.id) return;
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large. Max 5MB allowed.');
+      return;
+    }
+
+    setUploading(currentDocId);
+
+    try {
+      // Map doc IDs to API-accepted fileType values
+      const fileTypeMap: Record<string, string> = {
+        aadhaar: 'aadhaar',
+        bank: 'bank_proof',
+        fssai: 'fssai',
+        gst: 'gst',
+        pan: 'pan',
+      };
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('vendorId', profile.id);
+      formData.append('fileType', fileTypeMap[currentDocId] || 'aadhaar');
+
+      const res = await fetch('/api/vendor/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        // Map docId to profile field
+        const fieldMap: Record<string, string> = {
+          aadhaar: 'aadhaarUrl',
+          bank: 'bankDocUrl',
+          fssai: 'fssaiUrl',
+          gst: 'gstUrl',
+          pan: 'panUrl',
+        };
+        const fieldName = fieldMap[currentDocId] || `${currentDocId}Url`;
+
+        // Save URL to Firestore via settings API
+        const saveRes = await fetch('/api/vendor/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            vendorId: profile.id,
+            [fieldName]: data.url,
+          }),
+        });
+
+        if (saveRes.ok) {
+          // Update local profile
+          const updatedProfile = { ...profile, [fieldName]: data.url };
+          setProfile(updatedProfile);
+          localStorage.setItem('noe-vendor-profile', JSON.stringify(updatedProfile));
+          toast.success(`${currentDocId === 'aadhaar' ? 'Aadhaar' : currentDocId === 'bank' ? 'Bank document' : currentDocId.toUpperCase()} uploaded successfully! ✅`);
+        } else {
+          toast.error('Upload succeeded but save failed. Try again.');
+        }
+      } else {
+        toast.error(data.error || 'Upload failed. Try again.');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error('Upload failed. Check your internet connection.');
+    } finally {
+      setUploading(null);
+      setCurrentDocId(null);
+    }
+  };
 
   // Determine document statuses based on vendor profile
   const isLive = profile?.onboardingStatus === 'active' || profile?.onboardingStatus === 'approved';
@@ -481,6 +569,15 @@ function DocumentsKYCSection() {
 
   return (
     <div className="space-y-4">
+      {/* Hidden file input for document uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*,.pdf"
+        className="hidden"
+      />
+
       {/* Progress indicator */}
       <div className="glass-card rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
@@ -526,17 +623,25 @@ function DocumentsKYCSection() {
                   {config.badge}
                 </span>
                 {doc.status === 'not_uploaded' && (
-                  <button className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-accent border border-orange-500/20 hover:bg-orange-500/15 transition-all">
-                    {t('upload_btn')}
+                  <button
+                    onClick={() => handleUploadClick(doc.id)}
+                    disabled={uploading === doc.id}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-accent border border-orange-500/20 hover:bg-orange-500/15 transition-all disabled:opacity-50">
+                    {uploading === doc.id ? '⏳...' : t('upload_btn')}
                   </button>
                 )}
                 {doc.status === 'rejected' && (
-                  <button className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/15 transition-all">
-                    {t('reupload_btn')}
+                  <button
+                    onClick={() => handleUploadClick(doc.id)}
+                    disabled={uploading === doc.id}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/15 transition-all disabled:opacity-50">
+                    {uploading === doc.id ? '⏳...' : t('reupload_btn')}
                   </button>
                 )}
                 {(doc.status === 'uploaded' || doc.status === 'verified') && (
-                  <button className="text-[10px] text-accent font-bold hover:opacity-80">{t('view_btn')}</button>
+                  <button
+                    onClick={() => { if (profile?.[`${doc.id}Url`] || profile?.aadhaarUrl) window.open(profile.aadhaarUrl || profile[`${doc.id}Url`], '_blank'); }}
+                    className="text-[10px] text-accent font-bold hover:opacity-80">{t('view_btn')}</button>
                 )}
               </div>
             </div>
@@ -568,7 +673,12 @@ function DocumentsKYCSection() {
                   {config.badge}
                 </span>
                 {doc.status === 'optional' && (
-                  <button className="block mt-1.5 text-[10px] text-accent font-bold hover:opacity-80">{t('add_btn')}</button>
+                  <button
+                    onClick={() => handleUploadClick(doc.id)}
+                    disabled={uploading === doc.id}
+                    className="block mt-1.5 text-[10px] text-accent font-bold hover:opacity-80 disabled:opacity-50">
+                    {uploading === doc.id ? '⏳...' : t('add_btn')}
+                  </button>
                 )}
               </div>
             </div>

@@ -37,7 +37,7 @@ const nextConfig = {
           // Permissions Policy — restrict browser features
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(self), geolocation=(self), payment=(self)',
+            value: 'camera=(self), microphone=(self), geolocation=(self), payment=(self)',
           },
           // Strict Transport Security — force HTTPS (1 year)
           {
