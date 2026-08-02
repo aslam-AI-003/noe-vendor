@@ -40,6 +40,7 @@ if (hasValidConfig) {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+
 }
 
 export { auth, db, storage };

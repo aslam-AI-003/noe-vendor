@@ -9,24 +9,60 @@ import {
   ShoppingBag, ChefHat, Bike, Bell, Eye, ArrowUpRight, ArrowDownRight,
   Zap, Timer, Star, Users, ToggleLeft, ToggleRight,
 } from 'lucide-react';
+import SetupModeDashboard from '@/components/onboarding/SetupModeDashboard';
+import { useLanguage } from '@/lib/i18n/index';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // VENDOR DASHBOARD HOME — Premium Swiggy/Zepto style
+// Shows SETUP MODE if vendor not yet approved
+// Shows LIVE DASHBOARD if vendor is active
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export default function ShopDashboardHome() {
+  const { t } = useLanguage();
   const { demoOrders, updateDemoOrderStatus } = useStore();
   const [mounted, setMounted] = useState(false);
   const [shopOnline, setShopOnline] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isLiveMode, setIsLiveMode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    
+    // Check vendor status from localStorage
+    const savedProfile = localStorage.getItem('noe-vendor-profile');
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      // Only show live dashboard if admin has approved
+      // Check BOTH fields for compatibility:
+      // - 'onboardingStatus' === 'active' or 'approved' (vendor app field)
+      // - 'status' === 'approved' (admin panel field)
+      const isApproved = profile.onboardingStatus === 'active' 
+        || profile.onboardingStatus === 'approved'
+        || profile.status === 'approved';
+      setIsLiveMode(isApproved);
+      
+      // Fetch online/offline status from Firestore
+      if (profile.id) {
+        fetch(`/api/vendor/status?vendorId=${profile.id}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) setShopOnline(data.isOnline);
+          })
+          .catch(() => {});
+      }
+    }
+    
     return () => clearInterval(timer);
   }, []);
 
   if (!mounted) return <DashboardSkeleton />;
+
+  // Show Setup Mode if vendor is NOT yet approved
+  if (!isLiveMode) {
+    return <SetupModeDashboard />;
+  }
 
   // ── Stats Calculations ──
   const allOrders = demoOrders;
@@ -61,9 +97,36 @@ export default function ShopDashboardHome() {
     toast.error('Order rejected');
   };
 
-  const toggleShopStatus = () => {
-    setShopOnline(!shopOnline);
-    toast.success(shopOnline ? 'Shop is now Offline' : 'Shop is now Online!');
+  const toggleShopStatus = async () => {
+    const newStatus = !shopOnline;
+    
+    // Confirmation before going offline
+    if (shopOnline) {
+      const confirmed = window.confirm(
+        '⚠️ Going offline will stop all new orders.\n\nAre you sure you want to go offline?'
+      );
+      if (!confirmed) return;
+    }
+
+    setShopOnline(newStatus);
+    toast.success(newStatus ? '🟢 Shop is now Online!' : '🔴 Shop is now Offline');
+
+    // Persist to Firestore
+    const savedProfile = localStorage.getItem('noe-vendor-profile');
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      if (profile.id) {
+        try {
+          await fetch('/api/vendor/status', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vendorId: profile.id, isOnline: newStatus }),
+          });
+        } catch (err) {
+          console.error('Failed to update status:', err);
+        }
+      }
+    }
   };
 
   const timeAgo = (iso: string) => {
@@ -95,7 +158,7 @@ export default function ShopDashboardHome() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-faint font-medium">{greeting()} 👋</p>
-            <h1 className="text-xl lg:text-2xl font-black text-body mt-1">Dashboard Overview</h1>
+            <h1 className="text-xl lg:text-2xl font-black text-body mt-1">{t('nav_dashboard')}</h1>
             <p className="text-sm text-muted mt-0.5">
               {currentTime.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
@@ -108,7 +171,7 @@ export default function ShopDashboardHome() {
                 : 'bg-red-500 text-white shadow-red-500/30'
             }`}>
             {shopOnline ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-            <span>{shopOnline ? 'Shop Online' : 'Shop Offline'}</span>
+            <span>{shopOnline ? t('shop_online') : t('shop_offline')}</span>
           </button>
         </div>
         {/* Decorative circles */}
@@ -121,22 +184,22 @@ export default function ShopDashboardHome() {
       {/* ── Stats Grid ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <StatCard
-          icon={ShoppingBag} label="Today's Orders" value={stats.totalOrders}
+          icon={ShoppingBag} label={t('total_orders')} value={stats.totalOrders}
           trend={stats.totalOrders > 0 ? '+12%' : undefined} trendUp color="text-blue-600 dark:text-blue-400"
           bgColor="bg-blue-500/8"
         />
         <StatCard
-          icon={IndianRupee} label="Revenue" value={`₹${stats.revenue.toLocaleString()}`}
+          icon={IndianRupee} label={t('revenue')} value={`₹${stats.revenue.toLocaleString()}`}
           trend={stats.revenue > 0 ? '+8%' : undefined} trendUp color="text-emerald-600 dark:text-emerald-400"
           bgColor="bg-emerald-500/8"
         />
         <StatCard
-          icon={Timer} label="Avg Prep Time" value={`${stats.avgPrepTime}m`}
+          icon={Timer} label={t('avg_prep_time')} value={`${stats.avgPrepTime}m`}
           trend="-2m" trendUp color="text-orange-600 dark:text-orange-400"
           bgColor="bg-orange-500/8"
         />
         <StatCard
-          icon={Star} label="Rating" value={stats.rating.toString()}
+          icon={Star} label={t('avg_rating')} value={stats.rating.toString()}
           trend="+0.1" trendUp color="text-amber-600 dark:text-amber-400"
           bgColor="bg-amber-500/8"
         />

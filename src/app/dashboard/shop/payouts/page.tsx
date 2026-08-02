@@ -2,161 +2,195 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Wallet, IndianRupee, ArrowUpRight, ArrowDownRight, Calendar,
-  Building2, CreditCard, Clock, CheckCircle2, Download, Filter,
+  Wallet, IndianRupee, ArrowUpRight, Calendar,
+  Building2, CreditCard, Clock, CheckCircle2, Loader2,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/index';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// PAYOUTS & SETTLEMENT
+// PAYOUTS — Real earnings from completed orders
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const DEMO_TRANSACTIONS = [
-  { id: 'TXN001', date: '2026-07-29', amount: 2840, type: 'credit', status: 'completed', desc: 'Daily Settlement - 18 orders' },
-  { id: 'TXN002', date: '2026-07-28', amount: 3200, type: 'credit', status: 'completed', desc: 'Daily Settlement - 22 orders' },
-  { id: 'TXN003', date: '2026-07-27', amount: 1890, type: 'credit', status: 'completed', desc: 'Daily Settlement - 12 orders' },
-  { id: 'TXN004', date: '2026-07-26', amount: 4120, type: 'credit', status: 'completed', desc: 'Daily Settlement - 28 orders' },
-  { id: 'TXN005', date: '2026-07-25', amount: 3560, type: 'credit', status: 'processing', desc: 'Daily Settlement - 24 orders' },
-  { id: 'TXN006', date: '2026-07-24', amount: 450, type: 'debit', status: 'completed', desc: 'Platform Commission (15%)' },
-  { id: 'TXN007', date: '2026-07-23', amount: 2980, type: 'credit', status: 'completed', desc: 'Daily Settlement - 19 orders' },
-  { id: 'TXN008', date: '2026-07-22', amount: 380, type: 'debit', status: 'completed', desc: 'Platform Commission (15%)' },
-];
+interface Order {
+  id: string;
+  orderId: string;
+  totalAmount: number;
+  status: string;
+  items: { name: string; quantity: number; price: number }[];
+  createdAt?: { seconds: number };
+}
+
+const COMMISSION_RATE = 0.15; // 15% platform commission
 
 export default function PayoutsPage() {
-  const [mounted, setMounted] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'credit' | 'debit'>('all');
+  const { t } = useLanguage();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [vendorProfile, setVendorProfile] = useState<any>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const saved = localStorage.getItem('noe-vendor-profile');
+    if (saved) {
+      const profile = JSON.parse(saved);
+      setVendorProfile(profile);
+      fetchOrders(profile.id);
+    }
+  }, []);
 
-  if (!mounted) return <div className="space-y-4 animate-pulse"><div className="h-32 rounded-2xl skeleton" /><div className="h-64 rounded-2xl skeleton" /></div>;
+  const fetchOrders = async (vendorId: string) => {
+    try {
+      const res = await fetch(`/api/vendor/orders?vendorId=${vendorId}`);
+      const data = await res.json();
+      if (data.success) {
+        setOrders(data.orders);
+      }
+    } catch (err) {
+      console.error('Failed to fetch payouts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filtered = filter === 'all' ? DEMO_TRANSACTIONS : DEMO_TRANSACTIONS.filter(t => t.type === filter);
-  const totalEarnings = DEMO_TRANSACTIONS.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0);
-  const totalCommission = DEMO_TRANSACTIONS.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0);
-  const netBalance = totalEarnings - totalCommission;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  const completedOrders = orders.filter(o => ['delivered', 'picked_up'].includes(o.status));
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const totalCommission = Math.round(totalRevenue * COMMISSION_RATE);
+  const netEarnings = totalRevenue - totalCommission;
+
+  // Group by day
+  const dailyEarnings: Record<string, { date: string; revenue: number; orders: number; commission: number; net: number }> = {};
+  completedOrders.forEach(order => {
+    const date = order.createdAt?.seconds
+      ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : 'Unknown';
+    if (!dailyEarnings[date]) {
+      dailyEarnings[date] = { date, revenue: 0, orders: 0, commission: 0, net: 0 };
+    }
+    dailyEarnings[date].revenue += order.totalAmount;
+    dailyEarnings[date].orders += 1;
+    dailyEarnings[date].commission += Math.round(order.totalAmount * COMMISSION_RATE);
+    dailyEarnings[date].net += Math.round(order.totalAmount * (1 - COMMISSION_RATE));
+  });
+
+  const dailyList = Object.values(dailyEarnings).sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
+  // Payment info
+  const paymentMethod = vendorProfile?.upiId
+    ? `UPI: ${vendorProfile.upiId}`
+    : vendorProfile?.accountNumber
+    ? `Bank: ****${vendorProfile.accountNumber.slice(-4)}`
+    : 'Not configured';
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-5 max-w-4xl mx-auto">
 
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-black text-body">Payouts & Settlement</h1>
-          <p className="text-sm text-faint">Track your earnings and settlements</p>
-        </div>
-        <button className="btn-secondary text-xs px-4 py-2.5 flex items-center gap-1.5 self-start">
-          <Download size={13} /> Export Report
-        </button>
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-black text-body flex items-center gap-2">
+          <Wallet size={20} className="text-accent" />
+          {t('payouts_title')}
+        </h1>
       </div>
 
-      {/* ── Balance Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Current Balance */}
-        <div className="glass-card rounded-2xl p-5 relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, rgba(249,115,22,0.06) 0%, rgba(251,191,36,0.04) 100%)' }}>
-          <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-orange-500/5" />
-          <Wallet size={20} className="text-accent mb-2" />
-          <p className="text-[10px] text-faint font-medium uppercase">Available Balance</p>
-          <p className="text-2xl font-black text-body mt-1">₹{netBalance.toLocaleString()}</p>
-          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5 mt-1">
-            <ArrowUpRight size={10} /> Next payout: Tomorrow
-          </p>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="glass-card rounded-2xl p-4">
+          <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-2">
+            <IndianRupee size={14} className="text-emerald-600" />
+          </div>
+          <p className="text-2xl font-black text-emerald-600">₹{netEarnings.toLocaleString()}</p>
+          <p className="text-[10px] text-faint">{t('total_earnings')}</p>
         </div>
 
-        {/* Total Earnings */}
-        <div className="glass-card rounded-2xl p-5">
-          <IndianRupee size={18} className="text-emerald-600 dark:text-emerald-400 mb-2" />
-          <p className="text-[10px] text-faint font-medium uppercase">Total Earnings</p>
-          <p className="text-xl font-black text-body mt-1">₹{totalEarnings.toLocaleString()}</p>
-          <p className="text-[10px] text-faint mt-1">This month • 149 orders</p>
+        <div className="glass-card rounded-2xl p-4">
+          <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center mb-2">
+            <ArrowUpRight size={14} className="text-blue-600" />
+          </div>
+          <p className="text-2xl font-black text-body">₹{totalRevenue.toLocaleString()}</p>
+          <p className="text-[10px] text-faint">{t('revenue')}</p>
         </div>
 
-        {/* Commission */}
-        <div className="glass-card rounded-2xl p-5">
-          <CreditCard size={18} className="text-orange-600 dark:text-orange-400 mb-2" />
-          <p className="text-[10px] text-faint font-medium uppercase">Commission Paid</p>
-          <p className="text-xl font-black text-body mt-1">₹{totalCommission.toLocaleString()}</p>
-          <p className="text-[10px] text-faint mt-1">15% platform fee</p>
+        <div className="glass-card rounded-2xl p-4 col-span-2 lg:col-span-1">
+          <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center mb-2">
+            <CreditCard size={14} className="text-red-500" />
+          </div>
+          <p className="text-2xl font-black text-red-500">₹{totalCommission.toLocaleString()}</p>
+          <p className="text-[10px] text-faint">{t('commission_label')}</p>
         </div>
       </div>
 
-      {/* ── Bank Account ── */}
-      <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-        <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-          <Building2 size={18} className="text-blue-600 dark:text-blue-400" />
-        </div>
-        <div className="flex-1">
-          <p className="text-xs font-bold text-body">HDFC Bank ****4521</p>
-          <p className="text-[10px] text-faint">Auto-settlement every day at 6:00 AM</p>
-        </div>
-        <button className="text-xs text-accent font-bold hover:opacity-80">Change</button>
-      </div>
-
-      {/* ── Settlement Schedule ── */}
+      {/* Payment Method */}
       <div className="glass-card rounded-2xl p-4">
-        <h3 className="text-sm font-black text-body mb-3">Settlement Schedule</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { day: 'Yesterday', amount: '₹3,200', status: 'Settled', color: 'text-emerald-600 dark:text-emerald-400' },
-            { day: 'Today', amount: '₹2,840', status: 'Processing', color: 'text-orange-600 dark:text-orange-400' },
-            { day: 'Tomorrow', amount: '₹1,890', status: 'Scheduled', color: 'text-blue-600 dark:text-blue-400' },
-          ].map((item, i) => (
-            <div key={i} className="p-3 surface rounded-xl text-center">
-              <p className="text-[10px] text-faint font-medium">{item.day}</p>
-              <p className="text-base font-black text-body mt-1">{item.amount}</p>
-              <p className={`text-[10px] font-bold mt-1 ${item.color}`}>{item.status}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+              <Building2 size={16} className="text-purple-600" />
             </div>
-          ))}
+            <div>
+              <p className="text-xs font-bold text-body">{t('settlement_account')}</p>
+              <p className="text-[10px] text-faint">{paymentMethod}</p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
+            {vendorProfile?.upiId || vendorProfile?.accountNumber ? t('active_status') : t('setup_needed')}
+          </span>
         </div>
       </div>
 
-      {/* ── Transaction History ── */}
-      <div className="glass-card rounded-2xl overflow-hidden">
-        <div className="p-4 border-b border-subtle flex items-center justify-between">
-          <h3 className="text-sm font-black text-body">Transaction History</h3>
-          <div className="flex gap-1 p-0.5 surface rounded-lg">
-            {(['all', 'credit', 'debit'] as const).map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                  filter === f ? 'bg-orange-500 text-white' : 'text-faint hover:text-secondary'
-                }`}>
-                {f === 'all' ? 'All' : f === 'credit' ? 'Earnings' : 'Deductions'}
-              </button>
+      {/* Daily Earnings */}
+      <div className="glass-card rounded-2xl p-5">
+        <h3 className="text-sm font-black text-body mb-4 flex items-center gap-2">
+          <Calendar size={14} className="text-accent" />
+          {t('daily_settlement')}
+        </h3>
+
+        {dailyList.length === 0 ? (
+          <div className="text-center py-8">
+            <Wallet size={24} className="text-faint mx-auto mb-2" />
+            <p className="text-xs text-faint">{t('no_completed_orders_payout')}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {dailyList.map(day => (
+              <div key={day.date} className="flex items-center justify-between p-3 surface rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <CheckCircle2 size={12} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-body">{day.date}</p>
+                    <p className="text-[10px] text-faint">{day.orders} {t('orders_label')} • ₹{day.commission} {t('commission_text')}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black text-emerald-600">₹{day.net}</p>
+                  <p className="text-[9px] text-faint">of ₹{day.revenue}</p>
+                </div>
+              </div>
             ))}
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="divide-y divide-subtle">
-          {filtered.map(txn => (
-            <div key={txn.id} className="px-4 py-3.5 flex items-center gap-3 hover:bg-[var(--card-hover)] transition-colors">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                txn.type === 'credit' ? 'bg-emerald-500/10' : 'bg-red-500/10'
-              }`}>
-                {txn.type === 'credit' ? (
-                  <ArrowDownRight size={16} className="text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <ArrowUpRight size={16} className="text-red-500" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-body">{txn.desc}</p>
-                <p className="text-[10px] text-faint flex items-center gap-1">
-                  <Calendar size={9} /> {new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  <span className="mx-1">•</span>
-                  {txn.id}
-                </p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className={`text-sm font-black ${txn.type === 'credit' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                  {txn.type === 'credit' ? '+' : '-'}₹{txn.amount.toLocaleString()}
-                </p>
-                <p className={`text-[9px] font-bold ${
-                  txn.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'
-                }`}>
-                  {txn.status === 'completed' ? '✓ Settled' : '⏳ Processing'}
-                </p>
-              </div>
-            </div>
-          ))}
+      {/* Payout Schedule Info */}
+      <div className="glass-card rounded-2xl p-4 border border-amber-500/20 bg-amber-500/5">
+        <div className="flex items-start gap-3">
+          <Clock size={16} className="text-amber-600 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-amber-800">{t('payout_schedule')}</p>
+            <p className="text-[10px] text-amber-700/80 mt-0.5">
+              {t('payout_schedule_desc')}
+            </p>
+          </div>
         </div>
       </div>
     </div>

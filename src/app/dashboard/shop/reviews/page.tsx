@@ -1,172 +1,266 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Star, MessageSquare, ThumbsUp, TrendingUp, Filter, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Star, MessageSquare, ThumbsUp, TrendingUp, Send, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/index';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// RATINGS & REVIEWS
+// REVIEWS — Real data from Firestore
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const DEMO_REVIEWS = [
-  { id: '1', customer: 'Priya M.', rating: 5, text: 'Best biryani in Thanjavur! Always hot and fresh. Delivery was super quick too.', date: '2026-07-29', orderId: 'NOE-281', replied: false },
-  { id: '2', customer: 'Karthik R.', rating: 4, text: 'Good food, slightly delayed delivery. But taste was amazing as always.', date: '2026-07-28', orderId: 'NOE-275', replied: true, reply: 'Thank you Karthik! We are working on improving delivery times.' },
-  { id: '3', customer: 'Lakshmi S.', rating: 5, text: 'Filter coffee is the best! Reminds me of home-made coffee. Will order again!', date: '2026-07-27', orderId: 'NOE-268', replied: false },
-  { id: '4', customer: 'Senthil K.', rating: 3, text: 'Food was okay, but the portion size could be bigger for the price.', date: '2026-07-26', orderId: 'NOE-260', replied: true, reply: 'We appreciate your feedback Senthil. We have updated our portion sizes!' },
-  { id: '5', customer: 'Divya P.', rating: 5, text: 'Parotta and salna combo was heavenly! 🔥 Ordering every weekend now.', date: '2026-07-25', orderId: 'NOE-252', replied: false },
-  { id: '6', customer: 'Ravi A.', rating: 4, text: 'Consistent quality. Never disappoints. The masala dosa is my favorite.', date: '2026-07-24', orderId: 'NOE-245', replied: false },
-  { id: '7', customer: 'Meena G.', rating: 2, text: 'Order arrived cold. Packaging needs improvement for hot items.', date: '2026-07-23', orderId: 'NOE-238', replied: true, reply: 'Sorry about this Meena. We have switched to insulated packaging now.' },
-];
+interface Review {
+  id: string;
+  customerName: string;
+  rating: number;
+  text: string;
+  orderId?: string;
+  reply?: string | null;
+  repliedAt?: any;
+  createdAt?: { seconds: number };
+}
 
 export default function ReviewsPage() {
-  const [mounted, setMounted] = useState(false);
+  const { t } = useLanguage();
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [vendorId, setVendorId] = useState('');
   const [filterRating, setFilterRating] = useState<number | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const saved = localStorage.getItem('noe-vendor-profile');
+    if (saved) {
+      const profile = JSON.parse(saved);
+      setVendorId(profile.id);
+      fetchReviews(profile.id);
+    }
+  }, []);
 
-  if (!mounted) return <div className="space-y-4 animate-pulse"><div className="h-32 rounded-2xl skeleton" /><div className="h-64 rounded-2xl skeleton" /></div>;
+  const fetchReviews = async (id: string) => {
+    try {
+      const res = await fetch(`/api/vendor/reviews?vendorId=${id}`);
+      const data = await res.json();
+      if (data.success) {
+        setReviews(data.reviews);
+      }
+    } catch (err) {
+      console.error('Failed to fetch reviews:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filtered = filterRating ? DEMO_REVIEWS.filter(r => r.rating === filterRating) : DEMO_REVIEWS;
-  const avgRating = (DEMO_REVIEWS.reduce((s, r) => s + r.rating, 0) / DEMO_REVIEWS.length).toFixed(1);
+  const handleReply = async (reviewId: string) => {
+    if (!replyText.trim()) { toast.error('Enter a reply'); return; }
+    setSendingReply(true);
+    try {
+      const res = await fetch('/api/vendor/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reply', reviewId, reply: replyText }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, reply: replyText } : r));
+        toast.success('Reply sent! 💬');
+        setReplyingTo(null);
+        setReplyText('');
+      }
+    } catch (err) {
+      toast.error('Failed to send reply');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  const filtered = filterRating ? reviews.filter(r => r.rating === filterRating) : reviews;
+  const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '0';
   const ratingDist = [5, 4, 3, 2, 1].map(r => ({
     star: r,
-    count: DEMO_REVIEWS.filter(rev => rev.rating === r).length,
-    pct: Math.round((DEMO_REVIEWS.filter(rev => rev.rating === r).length / DEMO_REVIEWS.length) * 100),
+    count: reviews.filter(rev => rev.rating === r).length,
+    pct: reviews.length > 0 ? Math.round((reviews.filter(rev => rev.rating === r).length / reviews.length) * 100) : 0,
   }));
 
-  return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+  const getTimeAgo = (createdAt: any) => {
+    if (!createdAt?.seconds) return '';
+    const diff = Math.floor((Date.now() / 1000) - createdAt.seconds);
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  };
 
-      {/* ── Header ── */}
+  return (
+    <div className="space-y-5 max-w-4xl mx-auto">
+
+      {/* Header */}
       <div>
-        <h1 className="text-xl font-black text-body">Ratings & Reviews</h1>
-        <p className="text-sm text-faint">{DEMO_REVIEWS.length} reviews from customers</p>
+        <h1 className="text-xl font-black text-body flex items-center gap-2">
+          <Star size={20} className="text-amber-500" />
+          {t('reviews_title')}
+        </h1>
+        <p className="text-sm text-faint">{reviews.length} {t('total_reviews')}</p>
       </div>
 
-      {/* ── Overview Card ── */}
+      {/* Rating Overview */}
       <div className="glass-card rounded-2xl p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {/* Average Rating */}
-          <div className="text-center sm:text-left">
-            <div className="flex items-baseline gap-1 justify-center sm:justify-start">
-              <span className="text-4xl font-black text-body">{avgRating}</span>
-              <span className="text-lg text-faint">/5</span>
-            </div>
-            <div className="flex items-center gap-0.5 justify-center sm:justify-start mt-1">
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <p className="text-4xl font-black text-body">{avgRating}</p>
+            <div className="flex items-center gap-0.5 mt-1 justify-center">
               {[1, 2, 3, 4, 5].map(s => (
-                <Star key={s} size={16} className={s <= Math.round(Number(avgRating)) ? 'text-amber-400 fill-amber-400' : 'text-faint'} />
+                <Star key={s} size={12} className={s <= Math.round(Number(avgRating)) ? 'text-amber-500 fill-amber-500' : 'text-gray-300'} />
               ))}
             </div>
-            <p className="text-xs text-faint mt-1">{DEMO_REVIEWS.length} ratings</p>
+            <p className="text-[10px] text-faint mt-1">{reviews.length} {t('reviews_label')}</p>
           </div>
 
-          {/* Rating Distribution */}
-          <div className="sm:col-span-2 space-y-1.5">
+          <div className="flex-1 space-y-1.5">
             {ratingDist.map(r => (
               <div key={r.star} className="flex items-center gap-2">
-                <span className="text-xs text-muted w-4 text-right">{r.star}</span>
-                <Star size={11} className="text-amber-400 fill-amber-400" />
-                <div className="flex-1 h-2 rounded-full bg-[var(--input-bg)] overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-700"
-                    style={{ width: `${r.pct}%` }} />
+                <button
+                  onClick={() => setFilterRating(filterRating === r.star ? null : r.star)}
+                  className={`text-xs font-bold w-4 ${filterRating === r.star ? 'text-amber-500' : 'text-muted'}`}
+                >
+                  {r.star}
+                </button>
+                <Star size={10} className="text-amber-500" />
+                <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                  <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${r.pct}%` }} />
                 </div>
-                <span className="text-[10px] text-faint w-8">{r.count}</span>
+                <span className="text-[10px] text-faint w-8 text-right">{r.count}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Quick Stats ── */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="glass-sm rounded-xl p-3 text-center">
-          <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">85%</p>
-          <p className="text-[10px] text-faint">Positive (4-5★)</p>
-        </div>
-        <div className="glass-sm rounded-xl p-3 text-center">
-          <p className="text-lg font-black text-body">43%</p>
-          <p className="text-[10px] text-faint">Reply Rate</p>
-        </div>
-        <div className="glass-sm rounded-xl p-3 text-center">
-          <p className="text-lg font-black text-accent">+0.2</p>
-          <p className="text-[10px] text-faint">vs Last Month</p>
-        </div>
-      </div>
-
-      {/* ── Filter ── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+      {/* Filter chips */}
+      <div className="flex gap-2">
         <button onClick={() => setFilterRating(null)}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${!filterRating ? 'bg-orange-500 text-white' : 'glass-sm text-muted'}`}>
-          All ({DEMO_REVIEWS.length})
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${!filterRating ? 'bg-orange-500 text-white' : 'glass-sm text-muted'}`}>
+          All ({reviews.length})
         </button>
         {[5, 4, 3, 2, 1].map(r => (
-          <button key={r} onClick={() => setFilterRating(r)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${filterRating === r ? 'bg-orange-500 text-white' : 'glass-sm text-muted'}`}>
-            {r} <Star size={10} className={filterRating === r ? 'fill-white text-white' : 'fill-amber-400 text-amber-400'} />
+          <button key={r} onClick={() => setFilterRating(filterRating === r ? null : r)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ${filterRating === r ? 'bg-orange-500 text-white' : 'glass-sm text-muted'}`}>
+            {r} <Star size={10} className={filterRating === r ? 'text-white' : 'text-amber-500'} />
           </button>
         ))}
       </div>
 
-      {/* ── Reviews List ── */}
-      <div className="space-y-3">
-        {filtered.map(review => (
-          <div key={review.id} className="glass-card rounded-2xl p-4 space-y-3">
-            {/* Review Header */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-orange-500/10 flex items-center justify-center text-xs font-black text-accent">
-                  {review.customer.charAt(0)}
+      {/* Reviews List */}
+      {filtered.length === 0 ? (
+        <div className="glass-card rounded-2xl p-12 text-center">
+          <Star size={32} className="text-faint mx-auto mb-3" />
+          <p className="text-sm font-bold text-muted">
+            {reviews.length === 0 ? t('no_reviews_yet') : t('no_rating_filter')}
+          </p>
+          <p className="text-xs text-faint mt-1">{t('reviews_appear_hint')}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(review => (
+            <div key={review.id} className="glass-card rounded-2xl p-4 space-y-3">
+              {/* Review header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-xs font-black text-accent">
+                    {review.customerName.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-body">{review.customerName}</p>
+                    <p className="text-[10px] text-faint">{getTimeAgo(review.createdAt)} {review.orderId && `• ${review.orderId}`}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-body">{review.customer}</p>
-                  <p className="text-[10px] text-faint">Order #{review.orderId} • {new Date(review.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <Star key={s} size={12} className={s <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'} />
+                  ))}
                 </div>
               </div>
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <Star key={s} size={12} className={s <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-faint'} />
-                ))}
-              </div>
+
+              {/* Review text */}
+              {review.text && (
+                <p className="text-xs text-body leading-relaxed">{review.text}</p>
+              )}
+
+              {/* Vendor reply */}
+              {review.reply && (
+                <div className="ml-4 p-3 surface rounded-xl border-l-3 border-orange-500">
+                  <p className="text-[10px] font-bold text-accent mb-1">{t('your_reply')}</p>
+                  <p className="text-xs text-muted">{review.reply}</p>
+                </div>
+              )}
+
+              {/* Reply button */}
+              {!review.reply && (
+                <>
+                  {replyingTo === review.id ? (
+                    <div className="flex gap-2">
+                      <input
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        placeholder={t('write_reply')}
+                        className="input-glass text-xs flex-1"
+                        onKeyDown={e => e.key === 'Enter' && handleReply(review.id)}
+                      />
+                      <button
+                        onClick={() => handleReply(review.id)}
+                        disabled={sendingReply}
+                        className="px-3 py-2 rounded-xl bg-orange-500 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Send size={12} /> {sendingReply ? '...' : t('reply_btn')}
+                      </button>
+                      <button
+                        onClick={() => { setReplyingTo(null); setReplyText(''); }}
+                        className="px-3 py-2 rounded-xl glass-sm text-xs font-bold text-muted"
+                      >
+                        {t('cancel')}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setReplyingTo(review.id)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-accent hover:opacity-80"
+                    >
+                      <MessageSquare size={12} /> {t('reply_to_review')}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Review Text */}
-            <p className="text-xs text-secondary leading-relaxed">{review.text}</p>
-
-            {/* Shop Reply */}
-            {review.replied && review.reply && (
-              <div className="ml-4 p-3 bg-orange-500/5 border border-orange-500/15 rounded-xl">
-                <p className="text-[10px] text-accent font-bold mb-1">Your Reply:</p>
-                <p className="text-[11px] text-secondary">{review.reply}</p>
-              </div>
-            )}
-
-            {/* Reply Input */}
-            {replyingTo === review.id ? (
-              <div className="ml-4 space-y-2">
-                <textarea
-                  value={replyText}
-                  onChange={e => setReplyText(e.target.value)}
-                  placeholder="Write your reply..."
-                  className="input-glass text-xs w-full h-20 resize-none"
-                  autoFocus
-                />
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => { setReplyingTo(null); setReplyText(''); }}
-                    className="btn-secondary text-[10px] px-3 py-1.5">Cancel</button>
-                  <button onClick={() => { setReplyingTo(null); setReplyText(''); }}
-                    className="btn-primary text-[10px] px-3 py-1.5">Send Reply</button>
-                </div>
-              </div>
-            ) : !review.replied ? (
-              <button onClick={() => setReplyingTo(review.id)}
-                className="text-[11px] text-accent font-bold hover:opacity-80 flex items-center gap-1">
-                <MessageSquare size={11} /> Reply to review
-              </button>
-            ) : null}
+      {/* Tips */}
+      {reviews.length > 0 && (
+        <div className="glass-card rounded-2xl p-4 border border-blue-500/20 bg-blue-500/5">
+          <div className="flex items-start gap-3">
+            <TrendingUp size={16} className="text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-blue-800">{t('tips_title')}</p>
+              <ul className="text-[10px] text-blue-700/80 mt-1 space-y-0.5">
+                <li>• {t('tip_1')}</li>
+                <li>• {t('tip_2')}</li>
+                <li>• {t('tip_3')}</li>
+                <li>• {t('tip_4')}</li>
+              </ul>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

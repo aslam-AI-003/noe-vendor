@@ -1,30 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingBag, UtensilsCrossed, BarChart3, Wallet,
   Settings, Star, Bell, ChevronLeft, ChevronRight, Store, Bike, LogOut,
-  Menu, X,
+  Menu, X, Volume2, VolumeX, Sun, Moon,
 } from 'lucide-react';
+import { useOrderAlert } from '@/lib/useOrderAlert';
+import { useTheme } from '@/lib/useTheme';
+import { AuthGuard, useLogout } from '@/components/auth/AuthGuard';
+import { useLanguage } from '@/lib/i18n/index';
 
 const NAV_ITEMS = [
-  { href: '/dashboard/shop', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/shop/orders', label: 'Orders', icon: ShoppingBag },
-  { href: '/dashboard/shop/menu', label: 'Menu Manager', icon: UtensilsCrossed },
-  { href: '/dashboard/shop/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/dashboard/shop/payouts', label: 'Payouts', icon: Wallet },
-  { href: '/dashboard/shop/reviews', label: 'Reviews', icon: Star },
-  { href: '/dashboard/shop/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/shop', labelKey: 'nav_dashboard' as const, icon: LayoutDashboard },
+  { href: '/dashboard/shop/orders', labelKey: 'nav_orders' as const, icon: ShoppingBag },
+  { href: '/dashboard/shop/menu', labelKey: 'nav_menu' as const, icon: UtensilsCrossed },
+  { href: '/dashboard/shop/analytics', labelKey: 'nav_analytics' as const, icon: BarChart3 },
+  { href: '/dashboard/shop/payouts', labelKey: 'nav_payouts' as const, icon: Wallet },
+  { href: '/dashboard/shop/reviews', labelKey: 'nav_reviews' as const, icon: Star },
+  { href: '/dashboard/shop/settings', labelKey: 'nav_settings' as const, icon: Settings },
 ];
 
 export default function ShopDashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const { newOrderCount, soundEnabled, toggleSound, testSound, startPolling, stopPolling } = useOrderAlert();
+  const { isDark, toggleDarkMode } = useTheme();
+  const { logout } = useLogout();
+  const { t, lang, toggleLang } = useLanguage();
+
+  // Start polling for new orders when layout mounts
+  useEffect(() => {
+    startPolling();
+    return () => stopPolling();
+  }, [startPolling, stopPolling]);
 
   return (
+    <AuthGuard>
     <div className="min-h-screen app-bg flex">
       {/* ── Mobile Overlay ── */}
       {sidebarOpen && (
@@ -47,7 +62,7 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
             </div>
             {!collapsed && (
               <div className="animate-fade-in">
-                <h1 className="text-xs font-black text-body leading-tight">NammaOoru</h1>
+                <h1 className="text-xs font-black text-body leading-tight">Namma Ooru Express</h1>
                 <p className="text-[10px] text-accent font-bold">Vendor Panel</p>
               </div>
             )}
@@ -75,11 +90,11 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
                   }
                   ${collapsed ? 'justify-center px-2' : ''}
                 `}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? t(item.labelKey) : undefined}
               >
                 <item.icon size={16} className={isActive ? 'text-accent' : ''} />
-                {!collapsed && <span>{item.label}</span>}
-                {item.label === 'Orders' && !collapsed && (
+                {!collapsed && <span>{t(item.labelKey)}</span>}
+                {item.labelKey === 'nav_orders' && !collapsed && (
                   <span className="ml-auto w-5 h-5 bg-orange-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
                     •
                   </span>
@@ -123,32 +138,59 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
               </button>
               <div className="hidden lg:block">
                 <h2 className="text-sm font-black text-body">
-                  {NAV_ITEMS.find(i => pathname === i.href || (i.href !== '/dashboard/shop' && pathname.startsWith(i.href)))?.label || 'Dashboard'}
+                  {t(NAV_ITEMS.find(i => pathname === i.href || (i.href !== '/dashboard/shop' && pathname.startsWith(i.href)))?.labelKey || 'nav_dashboard')}
                 </h2>
-                <p className="text-[10px] text-faint">Welcome back, Shop Owner</p>
+                <p className="text-[10px] text-faint">{t('welcome_shop_owner')}</p>
               </div>
               {/* Mobile title */}
               <h2 className="text-sm font-black text-body lg:hidden flex items-center gap-1.5">
                 <Store size={14} className="text-accent" />
-                Vendor Panel
+                {t('vendor_panel')}
               </h2>
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Language Toggle */}
+              <button
+                onClick={toggleLang}
+                className="btn-icon relative text-blue-500 hover:text-blue-600 transition-colors"
+                title={lang === 'en' ? 'Switch to தமிழ்' : 'Switch to English'}
+              >
+                <span className="text-[10px] font-black">{lang === 'en' ? 'த' : 'EN'}</span>
+              </button>
+              {/* Dark/Light Mode Toggle */}
+              <button
+                onClick={toggleDarkMode}
+                className="btn-icon relative text-amber-500 hover:text-amber-600 transition-colors"
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+              {/* Sound Alert Toggle */}
+              <button
+                onClick={toggleSound}
+                className={`btn-icon relative ${soundEnabled ? 'text-emerald-600' : 'text-red-500'}`}
+                title={soundEnabled ? 'Sound alerts ON (click to mute)' : 'Sound alerts OFF (click to unmute)'}
+              >
+                {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
               {/* Notifications */}
               <button className="btn-icon relative">
                 <Bell size={16} />
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center">
-                  3
-                </span>
+                {newOrderCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center animate-pulse">
+                    {newOrderCount}
+                  </span>
+                )}
               </button>
-              {/* Quick links */}
-              <Link href="/dashboard/rider" className="hidden sm:flex btn-icon" title="Rider Dashboard">
-                <Bike size={16} />
-              </Link>
-              <Link href="/" className="btn-icon" title="Customer App">
+              {/* Logout */}
+              <button
+                onClick={logout}
+                className="btn-icon text-red-400 hover:text-red-500 transition-colors"
+                title="Logout"
+              >
                 <LogOut size={15} />
-              </Link>
+              </button>
             </div>
           </div>
         </header>
@@ -159,5 +201,6 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
         </div>
       </main>
     </div>
+    </AuthGuard>
   );
 }

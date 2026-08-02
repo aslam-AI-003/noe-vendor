@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Edit3, Trash2, Eye, EyeOff, Package,
-  Filter, Grid3X3, List, IndianRupee, Tag, Leaf, X, Save,
+  Filter, Grid3X3, List, IndianRupee, Tag, Leaf, X, Save, Camera, Loader2, ImageIcon,
 } from 'lucide-react';
-import { useStore, VendorProduct } from '@/store/useStore';
+import { VendorProduct } from '@/store/useStore';
+import { useLanguage } from '@/lib/i18n/index';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MENU MANAGER — Vendor adds/edits their OWN products
+// Connected to Firestore: vendors/{vendorId}/menu/{itemId}
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const CATEGORIES = [
@@ -32,8 +34,11 @@ const DEFAULT_FORM: Omit<VendorProduct, 'id' | 'shopId'> = {
 };
 
 export default function MenuManagerPage() {
-  const { user, vendorProducts, addVendorProduct, updateVendorProduct, deleteVendorProduct } = useStore();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
+  const [myProducts, setMyProducts] = useState<VendorProduct[]>([]);
+  const [vendorId, setVendorId] = useState('');
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -41,12 +46,30 @@ export default function MenuManagerPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
 
-  useEffect(() => { setMounted(true); }, []);
+  // Load vendorId and fetch menu from Firestore
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem('noe-vendor-profile');
+    if (saved) {
+      const profile = JSON.parse(saved);
+      setVendorId(profile.id);
+      fetchMenu(profile.id);
+    }
+  }, []);
+
+  const fetchMenu = async (id: string) => {
+    try {
+      const res = await fetch(`/api/vendor/menu?vendorId=${id}`);
+      const data = await res.json();
+      if (data.success) {
+        setMyProducts(data.items.map((item: any) => ({ ...item, shopId: id })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch menu:', err);
+    }
+  };
 
   if (!mounted) return <div className="space-y-4 animate-pulse"><div className="h-16 rounded-2xl skeleton" /><div className="h-64 rounded-2xl skeleton" /></div>;
-
-  const shopId = user?.uid || '';
-  const myProducts = vendorProducts.filter(p => p.shopId === shopId);
 
   // Filter items
   let filtered = myProducts;
@@ -64,18 +87,27 @@ export default function MenuManagerPage() {
   const inStockCount = myProducts.filter(i => i.isAvailable).length;
   const outOfStockCount = myProducts.filter(i => !i.isAvailable).length;
 
-  const toggleStock = (id: string) => {
+  const toggleStock = async (id: string) => {
     const item = myProducts.find(i => i.id === id);
     if (item) {
-      updateVendorProduct(id, { isAvailable: !item.isAvailable });
+      const newVal = !item.isAvailable;
+      // Optimistic update
+      setMyProducts(prev => prev.map(p => p.id === id ? { ...p, isAvailable: newVal } : p));
       toast.success(`${item.name} ${item.isAvailable ? 'marked out of stock' : 'back in stock'}`);
+      // Save to Firestore
+      await fetch('/api/vendor/menu', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId, itemId: id, isAvailable: newVal }),
+      });
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const item = myProducts.find(i => i.id === id);
-    deleteVendorProduct(id);
+    setMyProducts(prev => prev.filter(p => p.id !== id));
     toast.success(`${item?.name} removed`);
+    await fetch(`/api/vendor/menu?vendorId=${vendorId}&itemId=${id}`, { method: 'DELETE' });
   };
 
   const openAdd = () => {
@@ -101,28 +133,43 @@ export default function MenuManagerPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.price) {
       toast.error('Product name and price are required');
       return;
     }
 
-    if (editingId) {
-      updateVendorProduct(editingId, form);
-      toast.success(`${form.name} updated! ✅`);
-    } else {
-      const newProduct: VendorProduct = {
-        id: 'vp-' + Date.now().toString(36),
-        shopId,
-        ...form,
-        price: Number(form.price),
-        discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
-      };
-      addVendorProduct(newProduct);
-      toast.success(`${form.name} added to menu! 🎉`);
+    setLoading(true);
+    try {
+      if (editingId) {
+        // Update existing item in Firestore
+        await fetch('/api/vendor/menu', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendorId, itemId: editingId, ...form, price: Number(form.price), discountPrice: form.discountPrice ? Number(form.discountPrice) : null }),
+        });
+        setMyProducts(prev => prev.map(p => p.id === editingId ? { ...p, ...form, price: Number(form.price) } : p));
+        toast.success(`${form.name} updated! ✅`);
+      } else {
+        // Add new item to Firestore
+        const res = await fetch('/api/vendor/menu', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendorId, ...form, price: Number(form.price), discountPrice: form.discountPrice ? Number(form.discountPrice) : null }),
+        });
+        const data = await res.json();
+        if (data.success && data.item) {
+          setMyProducts(prev => [...prev, { ...data.item, shopId: vendorId }]);
+        }
+        toast.success(`${form.name} added to menu! 🎉`);
+      }
+      setShowModal(false);
+      setEditingId(null);
+    } catch (err) {
+      toast.error('Failed to save. Try again.');
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingId(null);
   };
 
   return (
@@ -131,16 +178,16 @@ export default function MenuManagerPage() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-black text-body">Menu Manager</h1>
+          <h1 className="text-xl font-black text-body">{t('menu_title')}</h1>
           <p className="text-sm text-faint">
-            {myProducts.length} items • <span className="text-emerald-600 dark:text-emerald-400">{inStockCount} in stock</span> • <span className="text-red-500">{outOfStockCount} out</span>
+            {myProducts.length} items • <span className="text-emerald-600 dark:text-emerald-400">{inStockCount} {t('available')}</span> • <span className="text-red-500">{outOfStockCount} {t('unavailable')}</span>
           </p>
         </div>
         <button
           onClick={openAdd}
           className="btn-primary flex items-center gap-2 text-sm px-5 py-2.5"
         >
-          <Plus size={16} /> Add Product
+          <Plus size={16} /> {t('add_item')}
         </button>
       </div>
 
@@ -151,7 +198,7 @@ export default function MenuManagerPage() {
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search products..."
+            placeholder={t('search_products')}
             className="input-glass pl-9 text-xs py-2.5 w-full"
           />
         </div>
@@ -179,7 +226,7 @@ export default function MenuManagerPage() {
                 : 'glass-sm text-muted hover:text-secondary'
             }`}
           >
-            {cat === 'all' ? 'All' : cat}
+            {cat === 'all' ? t('all_categories') : t((`cat_${cat.toLowerCase()}`) as any)}
           </button>
         ))}
       </div>
@@ -191,14 +238,14 @@ export default function MenuManagerPage() {
             <Package size={28} className="text-faint" />
           </div>
           <h3 className="text-base font-bold text-muted">
-            {myProducts.length === 0 ? 'No products yet' : 'No matching products'}
+            {myProducts.length === 0 ? t('no_products_yet') : t('no_matching')}
           </h3>
           <p className="text-xs text-faint mt-1">
-            {myProducts.length === 0 ? 'Add your first product to get started!' : 'Try a different search or category'}
+            {myProducts.length === 0 ? t('add_first_product') : t('try_different')}
           </p>
           {myProducts.length === 0 && (
             <button onClick={openAdd} className="btn-primary mt-4 inline-flex items-center gap-2 text-sm">
-              <Plus size={16} /> Add First Product
+              <Plus size={16} /> {t('add_first_product')}
             </button>
           )}
         </div>
@@ -230,7 +277,7 @@ export default function MenuManagerPage() {
                     )}
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${item.isAvailable ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>
-                    {item.isAvailable ? 'In Stock' : 'Out of Stock'}
+                    {item.isAvailable ? t('in_stock') : t('out_of_stock')}
                   </span>
                 </div>
 
@@ -242,13 +289,13 @@ export default function MenuManagerPage() {
                       item.isAvailable ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
                     }`}
                   >
-                    {item.isAvailable ? <><EyeOff size={12} /> Mark Out</> : <><Eye size={12} /> Restock</>}
+                    {item.isAvailable ? <><EyeOff size={12} /> {t('mark_out')}</> : <><Eye size={12} /> {t('restock')}</>}
                   </button>
                   <button
                     onClick={() => openEdit(item)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-all"
                   >
-                    <Edit3 size={12} /> Edit
+                    <Edit3 size={12} /> {t('edit')}
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
@@ -271,7 +318,7 @@ export default function MenuManagerPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-black text-body">
-                {editingId ? 'Edit Product' : 'Add New Product'}
+                {editingId ? t('edit_product') : t('add_new_product')}
               </h2>
               <button onClick={() => setShowModal(false)} className="btn-icon">
                 <X size={18} />
@@ -281,7 +328,7 @@ export default function MenuManagerPage() {
             {/* Form */}
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-muted mb-1 block">Product Name *</label>
+                <label className="text-xs font-bold text-muted mb-1 block">{t('product_name')}</label>
                 <input
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
@@ -291,7 +338,7 @@ export default function MenuManagerPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-muted mb-1 block">Tamil Name</label>
+                <label className="text-xs font-bold text-muted mb-1 block">{t('tamil_name')}</label>
                 <input
                   value={form.nameTamil}
                   onChange={e => setForm({ ...form, nameTamil: e.target.value })}
@@ -302,7 +349,7 @@ export default function MenuManagerPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-muted mb-1 block">Price (₹) *</label>
+                  <label className="text-xs font-bold text-muted mb-1 block">{t('price_label')}</label>
                   <input
                     type="number"
                     value={form.price || ''}
@@ -312,7 +359,7 @@ export default function MenuManagerPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-muted mb-1 block">Offer Price (₹)</label>
+                  <label className="text-xs font-bold text-muted mb-1 block">{t('offer_price')}</label>
                   <input
                     type="number"
                     value={form.discountPrice || ''}
@@ -325,17 +372,17 @@ export default function MenuManagerPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-muted mb-1 block">Category</label>
+                  <label className="text-xs font-bold text-muted mb-1 block">{t('category')}</label>
                   <select
                     value={form.category}
                     onChange={e => setForm({ ...form, category: e.target.value })}
                     className="input-glass text-sm"
                   >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {CATEGORIES.map(c => <option key={c} value={c}>{t((`cat_${c.toLowerCase()}`) as any)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-muted mb-1 block">Unit</label>
+                  <label className="text-xs font-bold text-muted mb-1 block">{t('unit')}</label>
                   <input
                     value={form.unit}
                     onChange={e => setForm({ ...form, unit: e.target.value })}
@@ -346,7 +393,7 @@ export default function MenuManagerPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-muted mb-1 block">Description</label>
+                <label className="text-xs font-bold text-muted mb-1 block">{t('description')}</label>
                 <textarea
                   value={form.description || ''}
                   onChange={e => setForm({ ...form, description: e.target.value })}
@@ -356,11 +403,68 @@ export default function MenuManagerPage() {
                 />
               </div>
 
+              {/* Product Photo Upload */}
+              <div>
+                <label className="text-xs font-bold text-muted mb-1 block">{t('product_photo')}</label>
+                <div className="flex items-center gap-3">
+                  {form.image ? (
+                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-subtle">
+                      <img src={form.image} alt="" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setForm({ ...form, image: '' })}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
+                      >
+                        <X size={10} className="text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-20 h-20 rounded-xl border-2 border-dashed border-orange-500/30 bg-orange-500/5 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-500/10 transition-all">
+                      <Camera size={16} className="text-accent mb-1" />
+                      <span className="text-[9px] text-accent font-bold">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('Image must be under 5MB');
+                            return;
+                          }
+                          toast.loading('Uploading photo...', { id: 'menu-upload' });
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('vendorId', vendorId);
+                            formData.append('type', 'menu');
+                            const res = await fetch('/api/vendor/upload', { method: 'POST', body: formData });
+                            const data = await res.json();
+                            if (data.success && data.url) {
+                              setForm({ ...form, image: data.url });
+                              toast.success('Photo uploaded! 📸', { id: 'menu-upload' });
+                            } else {
+                              toast.error(data.error || 'Upload failed', { id: 'menu-upload' });
+                            }
+                          } catch (err) {
+                            toast.error('Upload failed', { id: 'menu-upload' });
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                  <div className="flex-1">
+                    <p className="text-[10px] text-faint">{t('upload_photo_hint')}</p>
+                    <p className="text-[10px] text-faint">{t('max_5mb')}</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Veg toggle */}
               <div className="flex items-center justify-between p-3 surface rounded-xl">
                 <div className="flex items-center gap-2">
                   <Leaf size={14} className="text-emerald-500" />
-                  <span className="text-sm font-bold text-body">Vegetarian</span>
+                  <span className="text-sm font-bold text-body">{t('vegetarian')}</span>
                 </div>
                 <button
                   onClick={() => setForm({ ...form, isVeg: !form.isVeg })}
@@ -376,7 +480,7 @@ export default function MenuManagerPage() {
               <div className="flex items-center justify-between p-3 surface rounded-xl">
                 <div className="flex items-center gap-2">
                   <Eye size={14} className="text-blue-500" />
-                  <span className="text-sm font-bold text-body">Available / In Stock</span>
+                  <span className="text-sm font-bold text-body">{t('available_in_stock')}</span>
                 </div>
                 <button
                   onClick={() => setForm({ ...form, isAvailable: !form.isAvailable })}
@@ -395,7 +499,7 @@ export default function MenuManagerPage() {
               className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 text-sm"
             >
               <Save size={16} />
-              {editingId ? 'Update Product' : 'Add to Menu'}
+              {editingId ? t('update_product') : t('add_to_menu')}
             </button>
           </div>
         </div>
