@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Bank Details — MUST have either UPI OR full bank account
     const hasUPI = v.upiId && v.upiId.trim().length > 3;
-    const hasBankAccount = v.accountNumber && v.ifscCode && v.accountHolderName;
+    const hasBankAccount = v.accountNumber && v.ifscCode && (v.accountHolderName || v.accountHolder);
     if (!hasUPI && !hasBankAccount) {
       errors.push({ field: 'bank', message: 'Bank account (Account Number + IFSC + Holder Name) OR UPI ID is required' });
     }

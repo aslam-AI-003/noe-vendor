@@ -190,7 +190,7 @@ export default function SetupModeDashboard() {
       label: t('bank_details'),
       description: 'Account Number + IFSC + Holder Name OR UPI ID',
       icon: Building2,
-      completed: (!!profile.upiId && profile.upiId.length > 3) || (!!(profile as any).accountNumber && !!(profile as any).ifscCode && !!(profile as any).accountHolderName),
+      completed: (!!profile.upiId && profile.upiId.length > 3) || (!!(profile as any).accountNumber && !!(profile as any).ifscCode && (!!(profile as any).accountHolderName || !!(profile as any).accountHolder)),
       href: '/vendor/onboarding/step2',
       required: true,
     },

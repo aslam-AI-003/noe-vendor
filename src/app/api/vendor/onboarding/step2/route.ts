@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       updateData.accountNumber = accountNumber.trim();
       updateData.ifscCode = ifscCode.trim().toUpperCase();
       updateData.accountHolder = accountHolder.trim();
+      updateData.accountHolderName = accountHolder.trim(); // ← ALSO save as accountHolderName for checklist/submit validation
     }
 
     // ━━━━ Update Firestore ━━━━
