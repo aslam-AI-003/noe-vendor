@@ -501,8 +501,8 @@ function DocumentsKYCSection() {
       label: t('doc_bank'),
       description: t('doc_bank_desc'),
       required: true,
-      status: isLive ? 'verified' : (profile?.upiId || profile?.accountNumber || profile?.bankAccount) ? 'uploaded' : 'not_uploaded',
-      value: profile?.upiId || (profile?.accountNumber ? `****${profile.accountNumber.slice(-4)}` : null) || profile?.bankAccount || undefined,
+      status: isLive ? 'verified' : (profile?.bankDocUrl || profile?.upiId || profile?.accountNumber || profile?.bankAccount) ? 'uploaded' : 'not_uploaded',
+      value: profile?.bankDocUrl ? t('doc_uploaded') : (profile?.upiId || (profile?.accountNumber ? `****${profile.accountNumber.slice(-4)}` : null) || profile?.bankAccount || undefined),
     },
     {
       id: 'fssai',
