@@ -22,6 +22,8 @@ export default function OnboardingStep3Page() {
   // Document states
   const [aadhaarFront, setAadhaarFront] = useState<string | null>(null);
   const [aadhaarFrontFile, setAadhaarFrontFile] = useState<File | null>(null);
+  const [bankProof, setBankProof] = useState<string | null>(null);
+  const [bankProofFile, setBankProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -34,11 +36,27 @@ export default function OnboardingStep3Page() {
       if (profile.aadhaarUrl) {
         setAadhaarFront(profile.aadhaarUrl);
       }
+      if (profile.bankDocUrl) {
+        setBankProof(profile.bankDocUrl);
+      }
     } else {
       toast.error('Please register first');
       router.push('/vendor/register');
     }
   }, [router]);
+
+  const handleBankProofInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large. Max 5MB.');
+      return;
+    }
+    setBankProofFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setBankProof(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,12 +76,17 @@ export default function OnboardingStep3Page() {
       toast.error('Please upload your Aadhaar card');
       return;
     }
+    if (!bankProofFile && !bankProof) {
+      toast.error('Please upload bank proof (cancelled cheque/passbook)');
+      return;
+    }
 
     setLoading(true);
     try {
       let aadhaarUrl = aadhaarFront;
+      let bankDocUrl = bankProof;
 
-      // Upload to Firebase Storage if new file
+      // Upload Aadhaar to Firebase Storage if new file
       if (aadhaarFrontFile) {
         setUploading(true);
         const formData = new FormData();
@@ -77,21 +100,42 @@ export default function OnboardingStep3Page() {
         if (uploadData.success) {
           aadhaarUrl = uploadData.url;
         } else {
-          toast.error('Upload failed: ' + uploadData.error);
+          toast.error('Aadhaar upload failed: ' + uploadData.error);
           setLoading(false);
           setUploading(false);
           return;
         }
-        setUploading(false);
       }
 
-      // Save to Firestore via API
+      // Upload Bank Proof to Firebase Storage if new file
+      if (bankProofFile) {
+        const formData = new FormData();
+        formData.append('file', bankProofFile);
+        formData.append('vendorId', vendorId || '');
+        formData.append('fileType', 'bank_proof');
+
+        const uploadRes = await fetch('/api/vendor/upload', { method: 'POST', body: formData });
+        const uploadData = await uploadRes.json();
+
+        if (uploadData.success) {
+          bankDocUrl = uploadData.url;
+        } else {
+          toast.error('Bank proof upload failed: ' + uploadData.error);
+          setLoading(false);
+          setUploading(false);
+          return;
+        }
+      }
+      setUploading(false);
+
+      // Save BOTH to Firestore via API
       const res = await fetch('/api/vendor/onboarding/step3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vendorId,
           aadhaarUrl,
+          bankDocUrl,
         }),
       });
       const data = await res.json();
@@ -104,13 +148,13 @@ export default function OnboardingStep3Page() {
           const updated = {
             ...profile,
             aadhaarUrl,
+            bankDocUrl,
             onboardingStep: 3,
-            onboardingStatus: 'pending_approval',
           };
           localStorage.setItem('noe-vendor-profile', JSON.stringify(updated));
         }
         setSubmitted(true);
-        toast.success('Documents submitted for review! 🎉');
+        toast.success('Documents saved! 🎉');
       } else {
         toast.error(data.error || 'Failed to save');
       }
@@ -244,6 +288,46 @@ export default function OnboardingStep3Page() {
               type="file"
               accept="image/*,application/pdf"
               onChange={handleFileInput}
+              className="hidden"
+            />
+          </div>
+
+          {/* Bank Proof Upload */}
+          <div>
+            <label className="text-[10px] font-bold text-faint uppercase mb-2 block">Bank Proof (Cancelled Cheque / Passbook) *</label>
+            {bankProof ? (
+              <div className="relative w-full h-44 rounded-2xl overflow-hidden border border-emerald-500/30 bg-emerald-500/[0.02]">
+                <img src={bankProof} alt="Bank Proof" className="w-full h-full object-cover" />
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <button onClick={() => { setBankProof(null); setBankProofFile(null); }}
+                    className="w-7 h-7 bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="absolute bottom-2 left-2 px-2 py-1 bg-emerald-500/90 rounded-lg">
+                  <p className="text-[10px] font-bold text-white flex items-center gap-1">
+                    <CheckCircle2 size={10} /> Uploaded
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <label htmlFor="bankproof-input" className="block">
+                <div className="w-full h-36 rounded-2xl border-2 border-dashed border-blue-500/30 bg-blue-500/[0.03] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-blue-500/[0.06] transition-all active:scale-[0.98]">
+                  <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center">
+                    <Upload size={20} className="text-blue-600" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-blue-600">Tap to upload Bank Proof</p>
+                    <p className="text-[10px] text-faint mt-0.5">Cancelled cheque or passbook front page</p>
+                  </div>
+                </div>
+              </label>
+            )}
+            <input
+              id="bankproof-input"
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleBankProofInput}
               className="hidden"
             />
           </div>

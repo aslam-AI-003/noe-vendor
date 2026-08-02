@@ -3,13 +3,14 @@ import { serverDb, doc, updateDoc, serverTimestamp } from '@/lib/firebaseAdmin';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // POST /api/vendor/onboarding/step3
-// Saves Aadhaar URL + sets status to pending_approval
+// Saves Aadhaar URL + Bank Proof URL to Firestore
+// Does NOT auto-submit anymore — vendor must click "Submit for Review" separately
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { vendorId, aadhaarUrl } = body;
+    const { vendorId, aadhaarUrl, bankDocUrl } = body;
 
     if (!vendorId) {
       return NextResponse.json(
@@ -25,19 +26,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update Firestore — save aadhaarUrl + change status to pending_approval
-    await updateDoc(doc(serverDb, 'vendors', vendorId), {
+    // Build update data
+    const updateData: Record<string, any> = {
       aadhaarUrl,
       onboardingStep: 3,
-      onboardingStatus: 'pending_approval',
       updatedAt: serverTimestamp(),
-    });
+    };
 
-    console.log('✅ Step 3 complete — KYC submitted:', vendorId, '| Status: pending_approval');
+    // Also save bank proof if provided
+    if (bankDocUrl) {
+      updateData.bankDocUrl = bankDocUrl;
+    }
+
+    // Update Firestore
+    await updateDoc(doc(serverDb, 'vendors', vendorId), updateData);
+
+    console.log('✅ Step 3 saved — KYC docs:', vendorId, '| Aadhaar: ✓', bankDocUrl ? '| BankProof: ✓' : '');
 
     return NextResponse.json({
       success: true,
-      message: 'KYC documents submitted for review',
+      message: 'KYC documents saved successfully',
     });
 
   } catch (error: any) {
