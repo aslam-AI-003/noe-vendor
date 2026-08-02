@@ -141,6 +141,14 @@ export default function OnboardingStep3Page() {
       const data = await res.json();
 
       if (data.success) {
+        // Documents saved — now actually submit for review
+        const submitRes = await fetch('/api/vendor/onboarding/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendorId }),
+        });
+        const submitData = await submitRes.json();
+
         // Update localStorage
         const saved = localStorage.getItem('noe-vendor-profile');
         if (saved) {
@@ -150,11 +158,21 @@ export default function OnboardingStep3Page() {
             aadhaarUrl,
             bankDocUrl,
             onboardingStep: 3,
+            onboardingStatus: submitData.success ? 'pending_approval' : profile.onboardingStatus,
           };
           localStorage.setItem('noe-vendor-profile', JSON.stringify(updated));
         }
-        setSubmitted(true);
-        toast.success('Documents saved! 🎉');
+
+        if (submitData.success) {
+          setSubmitted(true);
+          toast.success('Documents submitted for review! 🎉');
+        } else if (submitData.missingFields) {
+          toast.error(`Cannot submit: ${submitData.missingFields.length} field(s) still missing`);
+        } else {
+          // Documents saved but couldn't submit yet
+          setSubmitted(true);
+          toast.success('Documents saved! Go to Dashboard to complete remaining steps.');
+        }
       } else {
         toast.error(data.error || 'Failed to save');
       }
