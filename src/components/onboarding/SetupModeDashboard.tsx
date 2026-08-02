@@ -96,9 +96,12 @@ export default function SetupModeDashboard() {
   }, []);
 
   // Submit for review handler
+  const [missingFields, setMissingFields] = useState<{field: string; message: string}[]>([]);
+
   const handleSubmitForReview = async () => {
     if (!profile?.id) return;
     setSubmitting(true);
+    setMissingFields([]);
     try {
       const res = await fetch('/api/vendor/onboarding/submit', {
         method: 'POST',
@@ -112,6 +115,10 @@ export default function SetupModeDashboard() {
         const updated = { ...profile, onboardingStatus: 'pending_approval' as VendorOnboardingStatus };
         setProfile(updated);
         localStorage.setItem('noe-vendor-profile', JSON.stringify(updated));
+      } else if (data.missingFields && data.missingFields.length > 0) {
+        // Show detailed missing fields
+        setMissingFields(data.missingFields);
+        toast.error(`❌ ${data.missingFields.length} required field(s) missing!`);
       } else {
         toast.error(data.error || 'Failed to submit');
       }
@@ -364,6 +371,29 @@ export default function SetupModeDashboard() {
               <p className="text-xs text-faint mt-1">{totalSteps - completedCount} {t('steps_remaining')}</p>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Missing Fields Error Box (shown when submission is blocked) ── */}
+      {missingFields.length > 0 && (
+        <div className="rounded-2xl border border-red-500/30 p-4 bg-gradient-to-r from-red-500/5 to-rose-500/5">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle size={16} className="text-red-600" />
+            <h3 className="text-sm font-black text-red-700 dark:text-red-400">
+              ❌ Cannot Submit — {missingFields.length} Required Field(s) Missing
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {missingFields.map((err, i) => (
+              <div key={i} className="flex items-start gap-2 py-1.5 px-3 rounded-lg bg-red-500/5 border border-red-500/10">
+                <span className="text-red-500 text-xs mt-0.5">•</span>
+                <p className="text-xs text-red-800 dark:text-red-300 font-medium">{err.message}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-red-600/70 mt-3">
+            Please complete all required fields above before submitting for review.
+          </p>
         </div>
       )}
 
