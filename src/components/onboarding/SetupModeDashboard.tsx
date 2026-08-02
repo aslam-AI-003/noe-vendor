@@ -335,12 +335,15 @@ export default function SetupModeDashboard() {
                 <p className="text-[10px] text-faint">{step.description}</p>
               </div>
 
-              {/* Action */}
-              {!step.completed && step.href && (
+              {/* Action — Hide "Do It" if already submitted for review */}
+              {!step.completed && step.href && profile.onboardingStatus !== 'pending_approval' && (
                 <Link href={step.href}
                   className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-orange-500/10 text-accent border border-orange-500/20 hover:bg-orange-500/15 active:scale-95 transition-all shrink-0">
                   {t('do_it')}
                 </Link>
+              )}
+              {!step.completed && profile.onboardingStatus === 'pending_approval' && (
+                <span className="text-[10px] font-bold text-purple-600">Under Review</span>
               )}
               {step.completed && (
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{t('done_check')}</span>
