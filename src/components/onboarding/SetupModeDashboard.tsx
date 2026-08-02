@@ -244,10 +244,20 @@ export default function SetupModeDashboard() {
               <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center shrink-0">
                 <AlertCircle size={18} className="text-red-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-bold text-body">{t('changes_required')}</p>
                 <p className="text-xs text-muted mt-0.5">{profile.rejectionReason || ''}</p>
-                <p className="text-[10px] text-accent font-bold mt-2 cursor-pointer">{t('fix_resubmit')}</p>
+                {allDone && (
+                  <button
+                    onClick={handleSubmitForReview}
+                    disabled={submitting}
+                    className="mt-3 px-4 py-2 rounded-lg text-xs font-bold bg-orange-500 text-white active:scale-95 transition-all disabled:opacity-50">
+                    {submitting ? '⏳ Submitting...' : '🚀 Fixed! Resubmit for Review'}
+                  </button>
+                )}
+                {!allDone && (
+                  <p className="text-[10px] text-accent font-bold mt-2">{t('fix_resubmit')}</p>
+                )}
               </div>
             </div>
           </div>
