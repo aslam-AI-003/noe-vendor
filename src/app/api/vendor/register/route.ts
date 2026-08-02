@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverDb, collection, addDoc, serverTimestamp } from '@/lib/firebaseAdmin';
+import { serverDb, collection, addDoc, serverTimestamp, getDocs, query, where } from '@/lib/firebaseAdmin';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // POST /api/vendor/register
@@ -32,6 +32,20 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Shop type required' },
         { status: 400 }
       );
+    }
+
+    // Check for duplicate registration (same phone number)
+    const existingQuery = query(collection(serverDb, 'vendors'), where('phone', '==', phone));
+    const existingDocs = await getDocs(existingQuery);
+    if (!existingDocs.empty) {
+      // Return the existing vendor instead of creating duplicate
+      const existingDoc = existingDocs.docs[0];
+      console.log('⚠️ Vendor already exists for phone:', phone, '→ returning existing:', existingDoc.id);
+      return NextResponse.json({
+        success: true,
+        message: 'Vendor already registered',
+        vendor: { id: existingDoc.id, ...existingDoc.data() },
+      });
     }
 
     // Create vendor profile object for Firestore
