@@ -702,15 +702,17 @@ function OptionalDocumentsSection({ profile, setProfile }: OptionalDocProps) {
   const [fssaiNumber, setFssaiNumber] = useState(profile?.fssaiNumber || '');
   const [gstNumber, setGstNumber] = useState(profile?.gstNumber || '');
   const [panNumber, setPanNumber] = useState(profile?.panNumber || '');
+  const [initialSynced, setInitialSynced] = useState(false);
 
-  // Sync from profile when it changes
+  // Only sync from profile ONCE on initial load (not on every profile update)
   useEffect(() => {
-    if (profile) {
+    if (profile && !initialSynced) {
       setFssaiNumber(profile.fssaiNumber || '');
       setGstNumber(profile.gstNumber || '');
       setPanNumber(profile.panNumber || '');
+      setInitialSynced(true);
     }
-  }, [profile]);
+  }, [profile, initialSynced]);
 
   const optionalDocs = [
     {
