@@ -649,42 +649,8 @@ function DocumentsKYCSection() {
         })}
       </div>
 
-      {/* Optional Documents */}
-      <div className="glass-card rounded-2xl p-5 space-y-3">
-        <h3 className="text-sm font-black text-body flex items-center gap-2">
-          <FileText size={14} className="text-muted" />
-          {t('optional_documents')}
-        </h3>
-        <p className="text-[10px] text-faint">{t('optional_docs_hint')}</p>
-        {optionalDocs.map(doc => {
-          const config = statusConfig[doc.status];
-          return (
-            <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${config.borderClass} opacity-80 hover:opacity-100`}>
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${config.iconBg}`}>
-                <FileText size={14} className="text-faint" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-body">{doc.label}</p>
-                <p className="text-[10px] text-faint">{doc.description}</p>
-                {doc.value && <p className="text-[10px] text-muted font-mono mt-0.5">{doc.value}</p>}
-              </div>
-              <div className="shrink-0">
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${config.badgeClass}`}>
-                  {config.badge}
-                </span>
-                {doc.status === 'optional' && (
-                  <button
-                    onClick={() => handleUploadClick(doc.id)}
-                    disabled={uploading === doc.id}
-                    className="block mt-1.5 text-[10px] text-accent font-bold hover:opacity-80 disabled:opacity-50">
-                    {uploading === doc.id ? '⏳...' : t('add_btn')}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Optional Documents — Number + Photo */}
+      <OptionalDocumentsSection profile={profile} setProfile={setProfile} />
 
       {/* Overall status message */}
       <div className={`glass-sm rounded-xl p-4 text-center ${
@@ -708,6 +674,291 @@ function DocumentsKYCSection() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// OPTIONAL DOCUMENTS — Number Input + Optional Photo Upload
+// FSSAI (14-digit number + certificate photo)
+// GST (15-char GSTIN number)
+// PAN (10-char number + photo)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface OptionalDocProps {
+  profile: any;
+  setProfile: (p: any) => void;
+}
+
+function OptionalDocumentsSection({ profile, setProfile }: OptionalDocProps) {
+  const { t } = useLanguage();
+  const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [fileDocId, setFileDocId] = useState<string | null>(null);
+
+  // Local state for number inputs
+  const [fssaiNumber, setFssaiNumber] = useState(profile?.fssaiNumber || '');
+  const [gstNumber, setGstNumber] = useState(profile?.gstNumber || '');
+  const [panNumber, setPanNumber] = useState(profile?.panNumber || '');
+
+  // Sync from profile when it changes
+  useEffect(() => {
+    if (profile) {
+      setFssaiNumber(profile.fssaiNumber || '');
+      setGstNumber(profile.gstNumber || '');
+      setPanNumber(profile.panNumber || '');
+    }
+  }, [profile]);
+
+  const optionalDocs = [
+    {
+      id: 'fssai',
+      label: 'FSSAI License',
+      description: 'Required for food vendors (optional for others)',
+      placeholder: 'Enter 14-digit FSSAI number',
+      maxLength: 14,
+      pattern: /^\d{14}$/,
+      patternHint: '14-digit number',
+      numberValue: fssaiNumber,
+      setNumber: setFssaiNumber,
+      fieldName: 'fssaiNumber',
+      urlField: 'fssaiUrl',
+      hasPhoto: true,
+      photoLabel: 'Upload FSSAI certificate (optional)',
+    },
+    {
+      id: 'gst',
+      label: 'GST Number',
+      description: 'For vendors with GST registration',
+      placeholder: 'Enter 15-character GSTIN',
+      maxLength: 15,
+      pattern: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+      patternHint: '15-char GSTIN (e.g. 22AAAAA0000A1Z5)',
+      numberValue: gstNumber,
+      setNumber: setGstNumber,
+      fieldName: 'gstNumber',
+      urlField: 'gstUrl',
+      hasPhoto: false,
+      photoLabel: '',
+    },
+    {
+      id: 'pan',
+      label: 'PAN Card',
+      description: 'For tax reporting',
+      placeholder: 'Enter 10-character PAN',
+      maxLength: 10,
+      pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+      patternHint: '10-char PAN (e.g. ABCDE1234F)',
+      numberValue: panNumber,
+      setNumber: setPanNumber,
+      fieldName: 'panNumber',
+      urlField: 'panUrl',
+      hasPhoto: true,
+      photoLabel: 'Upload PAN card photo (optional)',
+    },
+  ];
+
+  // Save number to Firestore
+  const handleSaveNumber = async (doc: typeof optionalDocs[0]) => {
+    if (!profile?.id) return;
+    if (!doc.numberValue.trim()) {
+      toast.error(`Please enter ${doc.label}`);
+      return;
+    }
+
+    setSaving(doc.id);
+    try {
+      const res = await fetch('/api/vendor/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendorId: profile.id,
+          [doc.fieldName]: doc.numberValue.trim().toUpperCase(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updated = { ...profile, [doc.fieldName]: doc.numberValue.trim().toUpperCase() };
+        setProfile(updated);
+        localStorage.setItem('noe-vendor-profile', JSON.stringify(updated));
+        toast.success(`${doc.label} saved! ✅`);
+        setExpandedDoc(null);
+      } else {
+        toast.error(data.error || 'Save failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // Handle photo upload for optional docs
+  const handlePhotoUpload = (docId: string) => {
+    setFileDocId(docId);
+    if (fileRef.current) {
+      fileRef.current.value = '';
+      fileRef.current.click();
+    }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !fileDocId || !profile?.id) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large. Max 5MB.');
+      return;
+    }
+
+    setUploading(fileDocId);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('vendorId', profile.id);
+      formData.append('fileType', fileDocId);
+
+      const res = await fetch('/api/vendor/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        const doc = optionalDocs.find(d => d.id === fileDocId);
+        const urlField = doc?.urlField || `${fileDocId}Url`;
+
+        const saveRes = await fetch('/api/vendor/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendorId: profile.id, [urlField]: data.url }),
+        });
+
+        if (saveRes.ok) {
+          const updated = { ...profile, [urlField]: data.url };
+          setProfile(updated);
+          localStorage.setItem('noe-vendor-profile', JSON.stringify(updated));
+          toast.success('Document photo uploaded! ✅');
+        }
+      } else {
+        toast.error(data.error || 'Upload failed');
+      }
+    } catch {
+      toast.error('Upload failed');
+    } finally {
+      setUploading(null);
+      setFileDocId(null);
+    }
+  };
+
+  return (
+    <div className="glass-card rounded-2xl p-5 space-y-3">
+      <input type="file" ref={fileRef} onChange={handleFileSelected} accept="image/*,.pdf" className="hidden" />
+
+      <h3 className="text-sm font-black text-body flex items-center gap-2">
+        <FileText size={14} className="text-muted" />
+        Optional Documents
+      </h3>
+      <p className="text-[10px] text-faint">These help build trust with customers and may be required for food businesses.</p>
+
+      {optionalDocs.map(doc => {
+        const hasSavedNumber = !!profile?.[doc.fieldName];
+        const hasSavedPhoto = !!profile?.[doc.urlField];
+        const isExpanded = expandedDoc === doc.id;
+
+        return (
+          <div key={doc.id} className={`rounded-xl border transition-all overflow-hidden ${
+            hasSavedNumber ? 'border-emerald-500/25 bg-emerald-500/[0.02]' : 'border-subtle'
+          }`}>
+            {/* Header row */}
+            <div className="flex items-center gap-3 p-3.5 cursor-pointer" onClick={() => setExpandedDoc(isExpanded ? null : doc.id)}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                hasSavedNumber ? 'bg-emerald-500/10' : 'bg-[var(--bg3)]'
+              }`}>
+                {hasSavedNumber ? (
+                  <Shield size={14} className="text-emerald-600" />
+                ) : (
+                  <FileText size={14} className="text-faint" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-body">{doc.label}</p>
+                {hasSavedNumber ? (
+                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">{profile[doc.fieldName]}</p>
+                ) : (
+                  <p className="text-[10px] text-faint">{doc.description}</p>
+                )}
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                {hasSavedNumber && hasSavedPhoto && (
+                  <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">📄 Photo</span>
+                )}
+                {hasSavedNumber ? (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25">✓ Saved</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[var(--bg3)] text-faint border border-subtle">— Optional</span>
+                )}
+              </div>
+            </div>
+
+            {/* Expanded form */}
+            {isExpanded && (
+              <div className="px-4 pb-4 pt-1 border-t border-subtle space-y-3">
+                {/* Number input */}
+                <div>
+                  <label className="block text-[10px] font-bold text-faint uppercase mb-1.5">
+                    {doc.label} Number
+                  </label>
+                  <input
+                    type="text"
+                    value={doc.numberValue}
+                    onChange={e => doc.setNumber(e.target.value.toUpperCase())}
+                    placeholder={doc.placeholder}
+                    maxLength={doc.maxLength}
+                    className="input-glass text-xs font-mono uppercase tracking-wider"
+                  />
+                  <p className="text-[9px] text-faint mt-1">Format: {doc.patternHint}</p>
+                </div>
+
+                {/* Photo upload (optional) */}
+                {doc.hasPhoto && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-faint uppercase mb-1.5">
+                      {doc.photoLabel}
+                    </label>
+                    {hasSavedPhoto ? (
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                        <Shield size={12} className="text-emerald-600" />
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">Photo uploaded ✓</span>
+                        <button
+                          onClick={() => window.open(profile[doc.urlField], '_blank')}
+                          className="ml-auto text-[10px] text-accent font-bold">View</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handlePhotoUpload(doc.id)}
+                        disabled={uploading === doc.id}
+                        className="w-full py-2.5 rounded-lg border-2 border-dashed border-blue-500/25 bg-blue-500/[0.03] text-[10px] font-bold text-blue-600 hover:bg-blue-500/[0.06] transition-all disabled:opacity-50">
+                        {uploading === doc.id ? '⏳ Uploading...' : '📷 Tap to upload photo'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Save button */}
+                <button
+                  onClick={() => handleSaveNumber(doc)}
+                  disabled={saving === doc.id || !doc.numberValue.trim()}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-orange-500 text-white active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {saving === doc.id ? (
+                    <><span className="animate-spin">⏳</span> Saving...</>
+                  ) : (
+                    <><Save size={13} /> Save {doc.label}</>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
