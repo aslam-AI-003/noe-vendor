@@ -79,24 +79,21 @@ export default function OrdersPage() {
         orderBy('createdAt', 'desc')
       );
 
-      // Also query by shopId if available (for orders placed with shopId instead of docId)
-      let unsubShopId: (() => void) | null = null;
-      if (shopId && shopId !== vendorId) {
-        const q2 = query(ordersRef, where('vendorId', '==', shopId), orderBy('createdAt', 'desc'));
-        unsubShopId = onSnapshot(q2, (snapshot) => {
-          const shopIdOrders: Order[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Order[];
-          if (shopIdOrders.length > 0) {
-            setOrders(prev => {
-              const ids = new Set(prev.map(o => o.id));
-              const newOnes = shopIdOrders.filter(o => !ids.has(o.id));
-              return newOnes.length > 0 ? [...prev, ...newOnes].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)) : prev;
-            });
-          }
-        });
-      }
+      // Also query by shopId field (some orders have shopId but no vendorId)
+      const q2 = query(ordersRef, where('shopId', '==', vendorId), orderBy('createdAt', 'desc'));
+      const unsubShopId = onSnapshot(q2, (snapshot) => {
+        const shopIdOrders: Order[] = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Order[];
+        if (shopIdOrders.length > 0) {
+          setOrders(prev => {
+            const ids = new Set(prev.map(o => o.id));
+            const newOnes = shopIdOrders.filter(o => !ids.has(o.id));
+            return newOnes.length > 0 ? [...prev, ...newOnes].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)) : prev;
+          });
+        }
+      });
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const liveOrders: Order[] = snapshot.docs.map(doc => ({
