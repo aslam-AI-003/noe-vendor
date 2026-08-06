@@ -70,8 +70,16 @@ export async function PUT(request: NextRequest) {
       updateData.estimatedPrepTime = prepTime;
       updateData.acceptedAt = serverTimestamp();
     }
+    if (status === 'preparing') {
+      updateData.preparingAt = serverTimestamp();
+    }
     if (status === 'ready') {
       updateData.readyAt = serverTimestamp();
+      updateData.riderStatus = 'searching'; // Triggers rider assignment
+    }
+    if (status === 'cancelled') {
+      updateData.cancelledAt = serverTimestamp();
+      updateData.riderStatus = 'cancelled';
     }
 
     await updateDoc(orderRef, updateData);
