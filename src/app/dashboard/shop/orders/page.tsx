@@ -56,6 +56,10 @@ export default function OrdersPage() {
     if (saved) {
       const profile = JSON.parse(saved);
       setVendorId(profile.id);
+      // Also store shopId for alternate query
+      if (profile.shopId) {
+        (window as any).__vendorShopId = profile.shopId;
+      }
       fetchOrders(profile.id);
     }
   }, []);
@@ -64,13 +68,35 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!vendorId || !db) return;
 
+    const shopId = (window as any).__vendorShopId || '';
+
     try {
       const ordersRef = collection(db, 'orders');
+      // Query by vendorId (Firestore doc ID)
       const q = query(
         ordersRef,
         where('vendorId', '==', vendorId),
         orderBy('createdAt', 'desc')
       );
+
+      // Also query by shopId if available (for orders placed with shopId instead of docId)
+      let unsubShopId: (() => void) | null = null;
+      if (shopId && shopId !== vendorId) {
+        const q2 = query(ordersRef, where('vendorId', '==', shopId), orderBy('createdAt', 'desc'));
+        unsubShopId = onSnapshot(q2, (snapshot) => {
+          const shopIdOrders: Order[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Order[];
+          if (shopIdOrders.length > 0) {
+            setOrders(prev => {
+              const ids = new Set(prev.map(o => o.id));
+              const newOnes = shopIdOrders.filter(o => !ids.has(o.id));
+              return newOnes.length > 0 ? [...prev, ...newOnes].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)) : prev;
+            });
+          }
+        });
+      }
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const liveOrders: Order[] = snapshot.docs.map(doc => ({
