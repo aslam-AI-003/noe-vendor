@@ -101,15 +101,14 @@ export default function OrdersPage() {
 
     try {
       const ordersRef = collection(db, 'orders');
-      // Query by vendorId (Firestore doc ID)
+      // Query by vendorId (Firestore doc ID) — NO orderBy to avoid composite index requirement
       const q = query(
         ordersRef,
-        where('vendorId', '==', vendorId),
-        orderBy('createdAt', 'desc')
+        where('vendorId', '==', vendorId)
       );
 
       // Also query by shopId field (some orders have shopId but no vendorId)
-      const q2 = query(ordersRef, where('shopId', '==', vendorId), orderBy('createdAt', 'desc'));
+      const q2 = query(ordersRef, where('shopId', '==', vendorId));
       const unsubShopId = onSnapshot(q2, (snapshot) => {
         const shopIdOrders: Order[] = snapshot.docs.map(doc => ({
           id: doc.id,

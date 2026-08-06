@@ -17,14 +17,26 @@ export async function GET(request: NextRequest) {
     }
 
     const ordersRef = collection(db, 'orders');
-    const q = query(ordersRef, where('vendorId', '==', vendorId), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-
-    const orders = snapshot.docs.map(d => ({
-      id: d.id,
-      orderId: d.id,
-      ...d.data(),
-    }));
+    
+    // Query by both vendorId AND shopId (some orders use one, some the other)
+    const q1 = query(ordersRef, where('vendorId', '==', vendorId));
+    const q2 = query(ordersRef, where('shopId', '==', vendorId));
+    
+    const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+    
+    // Merge and deduplicate
+    const orderMap = new Map();
+    [...snap1.docs, ...snap2.docs].forEach(d => {
+      if (!orderMap.has(d.id)) {
+        orderMap.set(d.id, { id: d.id, orderId: d.id, ...d.data() });
+      }
+    });
+    
+    const orders = Array.from(orderMap.values()).sort((a: any, b: any) => {
+      const aTime = a.createdAt?.seconds || 0;
+      const bTime = b.createdAt?.seconds || 0;
+      return bTime - aTime;
+    });
 
     return NextResponse.json({ success: true, orders });
   } catch (error: any) {
