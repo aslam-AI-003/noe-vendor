@@ -9,7 +9,7 @@ import {
 import { PrepTimer, PrepTimePicker } from '@/components/orders/PrepTimer';
 import { useLanguage } from '@/lib/i18n/index';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ORDERS PAGE — Real-time vendor order management
@@ -55,12 +55,41 @@ export default function OrdersPage() {
     const saved = localStorage.getItem('noe-vendor-profile');
     if (saved) {
       const profile = JSON.parse(saved);
-      setVendorId(profile.id);
-      // Also store shopId for alternate query
-      if (profile.shopId) {
-        (window as any).__vendorShopId = profile.shopId;
+      
+      // Re-sync profile from Firestore using phone (fixes stale localStorage)
+      if (db && profile.phone) {
+        const vendorsRef = collection(db, 'vendors');
+        const q2 = query(vendorsRef, where('phone', '==', profile.phone));
+        getDocs(q2).then((snap: any) => {
+          if (!snap.empty) {
+            // Prefer approved vendor
+            const approvedDoc = snap.docs.find((d: any) => d.data().status === 'approved');
+            const correctDoc = approvedDoc || snap.docs[0];
+            const correctId = correctDoc.id;
+            const correctData = correctDoc.data();
+            
+            // Update localStorage with correct profile
+            const updatedProfile = { ...profile, id: correctId, shopName: correctData.shopName, shopId: correctData.shopId || correctId };
+            localStorage.setItem('noe-vendor-profile', JSON.stringify(updatedProfile));
+            
+            setVendorId(correctId);
+            if (correctData.shopId) {
+              (window as any).__vendorShopId = correctData.shopId;
+            }
+            fetchOrders(correctId);
+          }
+        }).catch(() => {
+          // Fallback to cached profile
+          setVendorId(profile.id);
+          fetchOrders(profile.id);
+        });
+      } else {
+        setVendorId(profile.id);
+        if (profile.shopId) {
+          (window as any).__vendorShopId = profile.shopId;
+        }
+        fetchOrders(profile.id);
       }
-      fetchOrders(profile.id);
     }
   }, []);
 

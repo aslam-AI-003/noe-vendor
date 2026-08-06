@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Search Firestore for vendor with this phone
+    // Search Firestore for vendor with this phone (prefer approved vendors)
     const q = query(collection(serverDb, 'vendors'), where('phone', '==', phone));
     const snapshot = await getDocs(q);
 
@@ -31,18 +31,21 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get the first matching vendor
-    const vendorDoc = snapshot.docs[0];
+    // Prefer approved vendor (if multiple docs exist with same phone)
+    const approvedDoc = snapshot.docs.find(d => d.data().status === 'approved');
+    const vendorDoc = approvedDoc || snapshot.docs[0];
     const vendorData = vendorDoc.data();
 
     // Return vendor profile
     const vendorProfile = {
       id: vendorDoc.id,
+      shopId: vendorData.shopId || vendorDoc.id, // For order queries
+      status: vendorData.status || 'pending',
       phone: vendorData.phone,
       shopName: vendorData.shopName,
       shopType: vendorData.shopType,
       shopPhotoUrl: vendorData.shopPhotoUrl,
-      onboardingStatus: vendorData.onboardingStatus,
+      onboardingStatus: vendorData.onboardingStatus || vendorData.status,
       onboardingStep: vendorData.onboardingStep,
       isLive: vendorData.isLive || false,
       vendorId: vendorData.vendorId,
