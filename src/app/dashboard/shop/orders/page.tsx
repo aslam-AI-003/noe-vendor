@@ -10,11 +10,15 @@ import { PrepTimer, PrepTimePicker } from '@/components/orders/PrepTimer';
 import { useLanguage } from '@/lib/i18n/index';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
+import {
+  listenShopOrders, listenNewOrders, listenActiveOrders,
+  acceptOrder, markPreparing, markReady, rejectOrder,
+} from '@/lib/noxOrderService';
+import type { NoxOrder } from '@/types/noxOrder';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ORDERS PAGE — Real-time vendor order management
-// Primary: Firestore onSnapshot (instant updates)
-// Fallback: HTTP polling every 10s if Firestore fails
+// ORDERS PAGE — Real-time vendor order management (NOX System)
+// Uses noxOrderService for all operations
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 interface OrderItem {
@@ -30,15 +34,27 @@ interface Order {
   customerPhone: string;
   items: OrderItem[];
   totalAmount: number;
+  total?: number;
   deliveryAddress: string;
   status: string;
   paymentMethod: string;
   createdAt?: any;
   acceptedAt?: any;
   estimatedPrepTime?: number;
+  estimatedDelivery?: string;
+  deliveryOTP?: string;
+  itemCount?: number;
 }
 
-const STATUS_FLOW = ['new', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered'];
+// Map NOX status to vendor display status
+function normalizeStatus(status: string): string {
+  // NOX uses 'placed', old system uses 'new'
+  if (status === 'placed') return 'new';
+  if (status === 'rider_assigned' || status === 'picked_up' || status === 'in_transit') return 'picked_up';
+  return status;
+}
+
+const STATUS_FLOW = ['new', 'placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered'];
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -47,7 +63,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active');
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
-  const [showPrepPicker, setShowPrepPicker] = useState<string | null>(null); // orderId showing picker
+  const [showPrepPicker, setShowPrepPicker] = useState<string | null>(null);
 
   const prevOrderCountRef = useRef(0);
 
@@ -62,138 +78,154 @@ export default function OrdersPage() {
         const q2 = query(vendorsRef, where('phone', '==', profile.phone));
         getDocs(q2).then((snap: any) => {
           if (!snap.empty) {
-            // Prefer approved vendor
             const approvedDoc = snap.docs.find((d: any) => d.data().status === 'approved');
             const correctDoc = approvedDoc || snap.docs[0];
             const correctId = correctDoc.id;
             const correctData = correctDoc.data();
             
-            // Update localStorage with correct profile
             const updatedProfile = { ...profile, id: correctId, shopName: correctData.shopName, shopId: correctData.shopId || correctId };
             localStorage.setItem('noe-vendor-profile', JSON.stringify(updatedProfile));
             
             setVendorId(correctId);
-            if (correctData.shopId) {
-              (window as any).__vendorShopId = correctData.shopId;
-            }
-            fetchOrders(correctId);
           }
         }).catch(() => {
-          // Fallback to cached profile
           setVendorId(profile.id);
-          fetchOrders(profile.id);
         });
       } else {
         setVendorId(profile.id);
-        if (profile.shopId) {
-          (window as any).__vendorShopId = profile.shopId;
-        }
-        fetchOrders(profile.id);
       }
     }
   }, []);
 
-  // Real-time Firestore listener (instant order updates)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Real-time Firestore listener using NOX Order Service
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   useEffect(() => {
     if (!vendorId || !db) return;
 
-    const shopId = (window as any).__vendorShopId || '';
+    // Listen to ALL orders for this shop (NOX service uses shopId field)
+    const unsubscribe = listenShopOrders(vendorId, (noxOrders: NoxOrder[]) => {
+      // Convert NoxOrder[] to local Order format for display
+      const mappedOrders: Order[] = noxOrders.map(o => ({
+        id: o.orderId,
+        orderId: o.orderId,
+        customerName: o.customerName || 'Customer',
+        customerPhone: o.customerPhone || '',
+        items: o.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+        totalAmount: o.total,
+        total: o.total,
+        deliveryAddress: o.deliveryAddress || '',
+        status: normalizeStatus(o.status),
+        paymentMethod: o.paymentMethod || 'COD',
+        createdAt: o.createdAt,
+        acceptedAt: o.acceptedAt,
+        estimatedPrepTime: o.estimatedDelivery ? parseInt(o.estimatedDelivery) || 20 : undefined,
+        estimatedDelivery: o.estimatedDelivery,
+        deliveryOTP: o.deliveryOTP,
+        itemCount: o.itemCount,
+      }));
 
+      // Detect new orders (play sound)
+      const newCount = mappedOrders.filter(o => o.status === 'new').length;
+      if (newCount > prevOrderCountRef.current && prevOrderCountRef.current > 0) {
+        try { new Audio('/sounds/order-alert.mp3').play(); } catch {}
+        toast('🔔 New order received!', {
+          icon: '🛎️',
+          duration: 5000,
+          style: { background: '#0E9F6E', color: '#fff', fontWeight: 'bold' },
+        });
+      }
+      prevOrderCountRef.current = newCount;
+
+      setOrders(mappedOrders);
+      setLoading(false);
+    });
+
+    // Also listen to old-format orders (backward compatibility)
+    let unsubOld: (() => void) | undefined;
     try {
       const ordersRef = collection(db, 'orders');
-      // Query by vendorId (Firestore doc ID) — NO orderBy to avoid composite index requirement
-      const q = query(
-        ordersRef,
-        where('vendorId', '==', vendorId)
-      );
-
-      // Also query by shopId field (some orders have shopId but no vendorId)
-      const q2 = query(ordersRef, where('shopId', '==', vendorId));
-      const unsubShopId = onSnapshot(q2, (snapshot) => {
-        const shopIdOrders: Order[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Order[];
-        if (shopIdOrders.length > 0) {
+      const q = query(ordersRef, where('vendorId', '==', vendorId));
+      unsubOld = onSnapshot(q, (snapshot) => {
+        const oldOrders: Order[] = snapshot.docs
+          .filter(doc => !doc.data().orderId?.startsWith('NOX-')) // Skip NOX orders (already handled)
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            status: normalizeStatus(doc.data().status),
+          })) as Order[];
+        
+        if (oldOrders.length > 0) {
           setOrders(prev => {
-            const ids = new Set(prev.map(o => o.id));
-            const newOnes = shopIdOrders.filter(o => !ids.has(o.id));
-            return newOnes.length > 0 ? [...prev, ...newOnes].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)) : prev;
+            const noxIds = new Set(prev.map(o => o.id));
+            const newOnes = oldOrders.filter(o => !noxIds.has(o.id));
+            return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
           });
         }
       });
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const liveOrders: Order[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Order[];
-
-        // Detect new orders (play sound)
-        const newCount = liveOrders.filter(o => o.status === 'new').length;
-        if (newCount > prevOrderCountRef.current && prevOrderCountRef.current > 0) {
-          // New order arrived!
-          try { new Audio('/sounds/order-alert.mp3').play(); } catch {}
-          toast('🔔 New order received!', {
-            icon: '🛎️',
-            duration: 5000,
-            style: { background: '#0E9F6E', color: '#fff', fontWeight: 'bold' },
-          });
-        }
-        prevOrderCountRef.current = newCount;
-
-        setOrders(liveOrders);
-        setLoading(false);
-      }, (error) => {
-        console.error('Firestore listener error, falling back to polling:', error);
-        // Fallback: start polling if Firestore listener fails
-        startPollingFallback();
-      });
-
-      return () => unsubscribe();
     } catch (err) {
-      console.error('Failed to setup Firestore listener:', err);
-      startPollingFallback();
+      console.warn('Old order listener setup failed:', err);
     }
+
+    return () => {
+      unsubscribe();
+      if (unsubOld) unsubOld();
+    };
   }, [vendorId]);
 
-  // Fallback polling (in case Firestore real-time fails)
-  const startPollingFallback = () => {
-    if (!vendorId) return;
-    const interval = setInterval(() => fetchOrders(vendorId), 10000);
-    return () => clearInterval(interval);
-  };
-
-  const fetchOrders = async (id: string) => {
-    try {
-      const res = await fetch(`/api/vendor/orders?vendorId=${id}`);
-      const data = await res.json();
-      if (data.success) {
-        setOrders(data.orders);
-      }
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // UPDATE STATUS — Uses NOX Order Service
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const updateStatus = async (orderId: string, newStatus: string, prepTime?: number) => {
     setUpdatingOrder(orderId);
     try {
-      const res = await fetch('/api/vendor/orders', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, status: newStatus, prepTime }),
-      });
-      const data = await res.json();
-      if (data.success) {
+      let success = false;
+
+      if (orderId.startsWith('NOX-')) {
+        // Use NOX Order Service
+        switch (newStatus) {
+          case 'accepted':
+            success = await acceptOrder(orderId, vendorId, prepTime);
+            break;
+          case 'preparing':
+            success = await markPreparing(orderId, vendorId);
+            break;
+          case 'ready':
+            success = await markReady(orderId, vendorId);
+            break;
+          case 'cancelled':
+            success = await rejectOrder(orderId, vendorId, 'Rejected by vendor');
+            break;
+          default:
+            // Fallback to API for other statuses
+            const res = await fetch('/api/vendor/orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId, status: newStatus, prepTime }),
+            });
+            const data = await res.json();
+            success = data.success;
+        }
+      } else {
+        // Old system — use API
+        const res = await fetch('/api/vendor/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, status: newStatus, prepTime }),
+        });
+        const data = await res.json();
+        success = data.success;
+      }
+
+      if (success) {
+        // Optimistic update (real-time listener will also update)
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
         toast.success(newStatus === 'cancelled' ? t('order_cancelled') : t('order_updated'));
-        // Play sound for new order acceptance
         if (newStatus === 'accepted') {
           try { new Audio('/sounds/order-accept.mp3').play(); } catch {}
         }
+      } else {
+        toast.error('Failed to update order');
       }
     } catch (err) {
       toast.error('Failed to update order');
@@ -202,7 +234,7 @@ export default function OrdersPage() {
     }
   };
 
-  const activeOrders = orders.filter(o => ['new', 'accepted', 'preparing', 'ready'].includes(o.status));
+  const activeOrders = orders.filter(o => ['new', 'placed', 'accepted', 'preparing', 'ready'].includes(o.status));
   const completedOrders = orders.filter(o => ['delivered', 'picked_up'].includes(o.status));
   const cancelledOrders = orders.filter(o => o.status === 'cancelled');
 
@@ -212,6 +244,7 @@ export default function OrdersPage() {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       new: 'bg-red-500 text-white animate-pulse',
+      placed: 'bg-red-500 text-white animate-pulse',
       accepted: 'bg-blue-500 text-white',
       preparing: 'bg-[#0E9F6E] text-white',
       ready: 'bg-emerald-500 text-white',
@@ -225,19 +258,30 @@ export default function OrdersPage() {
   const getNextAction = (status: string) => {
     const actions: Record<string, { label: string; next: string; icon: React.ElementType }> = {
       new: { label: t('accept_order'), next: 'accepted', icon: CheckCircle2 },
+      placed: { label: t('accept_order'), next: 'accepted', icon: CheckCircle2 },
       accepted: { label: t('start_preparing'), next: 'preparing', icon: ChefHat },
       preparing: { label: t('mark_ready'), next: 'ready', icon: Package },
-      ready: { label: t('picked_up'), next: 'picked_up', icon: Truck },
     };
     return actions[status];
   };
 
   const getTimeAgo = (createdAt: any) => {
-    if (!createdAt?.seconds) return '';
-    const diff = Math.floor((Date.now() / 1000) - createdAt.seconds);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    return `${Math.floor(diff / 3600)}h ago`;
+    if (!createdAt) return '';
+    // Handle Firestore Timestamp
+    if (createdAt?.seconds) {
+      const diff = Math.floor((Date.now() / 1000) - createdAt.seconds);
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      return `${Math.floor(diff / 3600)}h ago`;
+    }
+    // Handle ISO string
+    if (typeof createdAt === 'string') {
+      const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      return `${Math.floor(diff / 3600)}h ago`;
+    }
+    return '';
   };
 
   if (loading) {
@@ -267,10 +311,6 @@ export default function OrdersPage() {
           </h1>
           <p className="text-sm text-faint">{orders.length} {t('total_orders')} • {activeOrders.length} {t('active')}</p>
         </div>
-        <button onClick={() => fetchOrders(vendorId)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl glass-sm text-xs font-bold text-muted hover:text-body transition-all">
-          <RefreshCw size={13} /> {t('refresh')}
-        </button>
       </div>
 
       {/* Tabs */}
@@ -282,7 +322,7 @@ export default function OrdersPage() {
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === tab.id ? 'bg-[#0E9F6E] text-white shadow-lg shadow-orange-500/20' : 'glass-sm text-muted'
+              activeTab === tab.id ? 'bg-[#0E9F6E] text-white shadow-lg shadow-[#0E9F6E]/20' : 'glass-sm text-muted'
             }`}>
             <tab.icon size={13} /> {tab.label}
           </button>
@@ -316,7 +356,7 @@ export default function OrdersPage() {
                       <p className="text-[10px] text-faint">{getTimeAgo(order.createdAt)}</p>
                     </div>
                   </div>
-                  <p className="text-base font-black text-accent">₹{order.totalAmount}</p>
+                  <p className="text-base font-black text-accent">₹{order.totalAmount || order.total}</p>
                 </div>
 
                 {/* Order Items */}
@@ -334,9 +374,22 @@ export default function OrdersPage() {
                 {/* Customer Info */}
                 <div className="px-4 pb-3 flex items-center gap-4 text-[10px] text-faint">
                   <span className="flex items-center gap-1"><Phone size={10} /> {order.customerName}</span>
-                  <span className="flex items-center gap-1"><MapPin size={10} /> {order.deliveryAddress}</span>
-                  <span className="flex items-center gap-1"><IndianRupee size={10} /> {order.paymentMethod.toUpperCase()}</span>
+                  {order.deliveryAddress && (
+                    <span className="flex items-center gap-1 truncate max-w-[150px]"><MapPin size={10} /> {order.deliveryAddress}</span>
+                  )}
+                  <span className="flex items-center gap-1"><IndianRupee size={10} /> {order.paymentMethod}</span>
                 </div>
+
+                {/* Delivery OTP Display (for ready orders) */}
+                {order.status === 'ready' && order.deliveryOTP && (
+                  <div className="px-4 pb-3">
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2">
+                      <Truck size={14} className="text-purple-500" />
+                      <span className="text-xs text-muted">Delivery OTP:</span>
+                      <span className="text-sm font-black text-purple-600 tracking-widest">{order.deliveryOTP}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Prep Timer for accepted/preparing orders */}
                 {['accepted', 'preparing'].includes(order.status) && order.acceptedAt && order.estimatedPrepTime && (
@@ -364,7 +417,7 @@ export default function OrdersPage() {
                 )}
 
                 {/* Actions */}
-                {order.status === 'new' && showPrepPicker === order.id ? (
+                {(order.status === 'new' || order.status === 'placed') && showPrepPicker === order.id ? (
                   <PrepTimePicker
                     onAccept={(prepTime) => {
                       updateStatus(order.id, 'accepted', prepTime);
@@ -373,12 +426,12 @@ export default function OrdersPage() {
                     onCancel={() => setShowPrepPicker(null)}
                     isUpdating={updatingOrder === order.id}
                   />
-                ) : order.status === 'new' ? (
+                ) : (order.status === 'new' || order.status === 'placed') ? (
                   <div className="p-3 border-t border-subtle flex gap-2">
                     <button
                       onClick={() => setShowPrepPicker(order.id)}
                       disabled={updatingOrder === order.id}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0E9F6E] text-white text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 active:scale-95"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0E9F6E] text-white text-xs font-bold hover:bg-[#087f58] transition-all disabled:opacity-50 active:scale-95"
                     >
                       <CheckCircle2 size={14} />
                       {t('accept_order')}
@@ -391,16 +444,34 @@ export default function OrdersPage() {
                       <XCircle size={14} />
                     </button>
                   </div>
-                ) : order.status === 'ready' ? (
+                ) : order.status === 'accepted' ? (
                   <div className="p-3 border-t border-subtle">
                     <button
-                      onClick={() => updateStatus(order.id, 'picked_up')}
+                      onClick={() => updateStatus(order.id, 'preparing')}
                       disabled={updatingOrder === order.id}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-all disabled:opacity-50 active:scale-95"
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-all disabled:opacity-50 active:scale-95"
                     >
-                      <Truck size={14} />
-                      {updatingOrder === order.id ? t('loading') : t('picked_up')}
+                      <ChefHat size={14} />
+                      {updatingOrder === order.id ? t('loading') : t('start_preparing')}
                     </button>
+                  </div>
+                ) : order.status === 'preparing' ? (
+                  <div className="p-3 border-t border-subtle">
+                    <button
+                      onClick={() => updateStatus(order.id, 'ready')}
+                      disabled={updatingOrder === order.id}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-all disabled:opacity-50 active:scale-95"
+                    >
+                      <Package size={14} />
+                      {updatingOrder === order.id ? t('loading') : t('mark_ready')}
+                    </button>
+                  </div>
+                ) : order.status === 'ready' ? (
+                  <div className="p-3 border-t border-subtle">
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-purple-500/10 text-purple-600">
+                      <Truck size={14} />
+                      <span className="text-xs font-bold">Waiting for rider to pick up...</span>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -413,7 +484,7 @@ export default function OrdersPage() {
       <div className="text-center">
         <p className="text-[10px] text-faint flex items-center justify-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          {t('auto_refreshing')}
+          {t('auto_refreshing')} • NOX Real-time
         </p>
       </div>
     </div>
