@@ -182,7 +182,7 @@ export default function PayoutsPage() {
       </div>
 
       {/* Payout Schedule Info */}
-      <div className="glass-card rounded-2xl p-4 border border-amber-500/20 bg-amber-500/5">
+      <div className="glass-card rounded-2xl p-4 border border-[#0E9F6E]/20 bg-[#0E9F6E]/5">
         <div className="flex items-start gap-3">
           <Clock size={16} className="text-amber-600 mt-0.5" />
           <div>

@@ -211,7 +211,7 @@ export default function VendorRegisterPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-4">
             <Store size={28} className="text-white" />
           </div>
           <h1 className="text-2xl font-black text-body">
@@ -224,7 +224,7 @@ export default function VendorRegisterPage() {
           {['phone', 'otp', 'details'].map((s, i) => (
             <div key={s} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                step === s ? 'bg-orange-500 text-white scale-110 shadow-lg shadow-orange-500/30' :
+                step === s ? 'bg-[#0E9F6E] text-white scale-110 shadow-lg shadow-orange-500/30' :
                 ['phone', 'otp', 'details'].indexOf(step) > i ? 'bg-emerald-500 text-white' :
                 'bg-[var(--bg3)] text-faint'
               }`}>
@@ -299,7 +299,7 @@ export default function VendorRegisterPage() {
                   value={digit}
                   onChange={e => handleOTPChange(i, e.target.value)}
                   onKeyDown={e => handleOTPKeyDown(i, e)}
-                  className="w-14 h-14 text-center text-2xl font-black rounded-xl input-glass focus:border-orange-500"
+                  className="w-14 h-14 text-center text-2xl font-black rounded-xl input-glass focus:border-[#0E9F6E]"
                   maxLength={1}
                   inputMode="numeric"
                 />
@@ -345,8 +345,8 @@ export default function VendorRegisterPage() {
                 </div>
               ) : (
                 <button onClick={startCamera}
-                  className="w-full h-40 rounded-2xl border-2 border-dashed border-orange-500/30 bg-orange-500/[0.03] flex flex-col items-center justify-center gap-2 hover:bg-orange-500/[0.06] transition-all active:scale-[0.98]">
-                  <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center">
+                  className="w-full h-40 rounded-2xl border-2 border-dashed border-[#0E9F6E]/30 bg-[#0E9F6E]/[0.03] flex flex-col items-center justify-center gap-2 hover:bg-[#0E9F6E]/[0.06] transition-all active:scale-[0.98]">
+                  <div className="w-12 h-12 bg-[#0E9F6E]/10 rounded-full flex items-center justify-center">
                     <Camera size={22} className="text-accent" />
                   </div>
                   <p className="text-xs font-bold text-accent">Tap to capture shop photo</p>
@@ -367,8 +367,8 @@ export default function VendorRegisterPage() {
                   <button key={type.id} onClick={() => setShopType(type.id)}
                     className={`p-3 rounded-xl text-center border transition-all active:scale-95 ${
                       shopType === type.id
-                        ? 'border-orange-500 bg-orange-500/10 shadow-sm shadow-orange-500/10'
-                        : 'border-transparent surface hover:border-orange-400/30'
+                        ? 'border-[#0E9F6E] bg-[#0E9F6E]/10 shadow-sm shadow-orange-500/10'
+                        : 'border-transparent surface hover:border-[#0E9F6E]/30'
                     }`}>
                     <span className="text-xl block mb-1">{type.icon}</span>
                     <span className="text-[10px] font-bold text-secondary block leading-tight">{type.label}</span>
@@ -398,8 +398,8 @@ export default function VendorRegisterPage() {
             <button onClick={stopCamera} className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white">
               <X size={20} />
             </button>
-            <button onClick={capturePhoto} className="w-16 h-16 rounded-full bg-white border-4 border-orange-500 flex items-center justify-center active:scale-90 transition-transform">
-              <Camera size={24} className="text-orange-500" />
+            <button onClick={capturePhoto} className="w-16 h-16 rounded-full bg-white border-4 border-[#0E9F6E] flex items-center justify-center active:scale-90 transition-transform">
+              <Camera size={24} className="text-[#0E9F6E]" />
             </button>
             <div className="w-12 h-12" />
           </div>

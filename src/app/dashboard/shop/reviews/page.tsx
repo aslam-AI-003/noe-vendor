@@ -106,7 +106,7 @@ export default function ReviewsPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-black text-body flex items-center gap-2">
-          <Star size={20} className="text-amber-500" />
+          <Star size={20} className="text-[#0E9F6E]" />
           {t('reviews_title')}
         </h1>
         <p className="text-sm text-faint">{reviews.length} {t('total_reviews')}</p>
@@ -119,7 +119,7 @@ export default function ReviewsPage() {
             <p className="text-4xl font-black text-body">{avgRating}</p>
             <div className="flex items-center gap-0.5 mt-1 justify-center">
               {[1, 2, 3, 4, 5].map(s => (
-                <Star key={s} size={12} className={s <= Math.round(Number(avgRating)) ? 'text-amber-500 fill-amber-500' : 'text-gray-300'} />
+                <Star key={s} size={12} className={s <= Math.round(Number(avgRating)) ? 'text-[#0E9F6E] fill-amber-500' : 'text-gray-300'} />
               ))}
             </div>
             <p className="text-[10px] text-faint mt-1">{reviews.length} {t('reviews_label')}</p>
@@ -130,13 +130,13 @@ export default function ReviewsPage() {
               <div key={r.star} className="flex items-center gap-2">
                 <button
                   onClick={() => setFilterRating(filterRating === r.star ? null : r.star)}
-                  className={`text-xs font-bold w-4 ${filterRating === r.star ? 'text-amber-500' : 'text-muted'}`}
+                  className={`text-xs font-bold w-4 ${filterRating === r.star ? 'text-[#0E9F6E]' : 'text-muted'}`}
                 >
                   {r.star}
                 </button>
-                <Star size={10} className="text-amber-500" />
+                <Star size={10} className="text-[#0E9F6E]" />
                 <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                  <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${r.pct}%` }} />
+                  <div className="h-full rounded-full bg-[#0E9F6E] transition-all" style={{ width: `${r.pct}%` }} />
                 </div>
                 <span className="text-[10px] text-faint w-8 text-right">{r.count}</span>
               </div>
@@ -148,13 +148,13 @@ export default function ReviewsPage() {
       {/* Filter chips */}
       <div className="flex gap-2">
         <button onClick={() => setFilterRating(null)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${!filterRating ? 'bg-orange-500 text-white' : 'glass-sm text-muted'}`}>
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${!filterRating ? 'bg-[#0E9F6E] text-white' : 'glass-sm text-muted'}`}>
           All ({reviews.length})
         </button>
         {[5, 4, 3, 2, 1].map(r => (
           <button key={r} onClick={() => setFilterRating(filterRating === r ? null : r)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ${filterRating === r ? 'bg-orange-500 text-white' : 'glass-sm text-muted'}`}>
-            {r} <Star size={10} className={filterRating === r ? 'text-white' : 'text-amber-500'} />
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ${filterRating === r ? 'bg-[#0E9F6E] text-white' : 'glass-sm text-muted'}`}>
+            {r} <Star size={10} className={filterRating === r ? 'text-white' : 'text-[#0E9F6E]'} />
           </button>
         ))}
       </div>
@@ -175,7 +175,7 @@ export default function ReviewsPage() {
               {/* Review header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-xs font-black text-accent">
+                  <div className="w-8 h-8 rounded-full bg-[#0E9F6E]/10 flex items-center justify-center text-xs font-black text-accent">
                     {review.customerName.charAt(0)}
                   </div>
                   <div>
@@ -185,7 +185,7 @@ export default function ReviewsPage() {
                 </div>
                 <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map(s => (
-                    <Star key={s} size={12} className={s <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'} />
+                    <Star key={s} size={12} className={s <= review.rating ? 'text-[#0E9F6E] fill-amber-500' : 'text-gray-300'} />
                   ))}
                 </div>
               </div>
@@ -197,7 +197,7 @@ export default function ReviewsPage() {
 
               {/* Vendor reply */}
               {review.reply && (
-                <div className="ml-4 p-3 surface rounded-xl border-l-3 border-orange-500">
+                <div className="ml-4 p-3 surface rounded-xl border-l-3 border-[#0E9F6E]">
                   <p className="text-[10px] font-bold text-accent mb-1">{t('your_reply')}</p>
                   <p className="text-xs text-muted">{review.reply}</p>
                 </div>
@@ -218,7 +218,7 @@ export default function ReviewsPage() {
                       <button
                         onClick={() => handleReply(review.id)}
                         disabled={sendingReply}
-                        className="px-3 py-2 rounded-xl bg-orange-500 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                        className="px-3 py-2 rounded-xl bg-[#0E9F6E] text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                       >
                         <Send size={12} /> {sendingReply ? '...' : t('reply_btn')}
                       </button>

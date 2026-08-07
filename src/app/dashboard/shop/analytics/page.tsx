@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
           {(['today', 'week', 'all'] as const).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                period === p ? 'bg-orange-500 text-white' : 'text-muted'
+                period === p ? 'bg-[#0E9F6E] text-white' : 'text-muted'
               }`}>
               {p === 'today' ? t('today') : p === 'week' ? t('this_week') : t('all_time')}
             </button>
@@ -150,7 +150,7 @@ export default function AnalyticsPage() {
 
         <div className="glass-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-orange-500/10 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#0E9F6E]/10 rounded-lg flex items-center justify-center">
               <Package size={14} className="text-orange-600" />
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
           <div className="space-y-2.5">
             {topItems.map((item, idx) => (
               <div key={item.name} className="flex items-center gap-3 p-3 surface rounded-xl">
-                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-xs font-black text-accent">
+                <div className="w-8 h-8 rounded-lg bg-[#0E9F6E]/10 flex items-center justify-center text-xs font-black text-accent">
                   #{idx + 1}
                 </div>
                 <div className="flex-1 min-w-0">

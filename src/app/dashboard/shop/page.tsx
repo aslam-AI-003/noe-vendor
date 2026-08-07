@@ -178,7 +178,7 @@ export default function ShopDashboardHome() {
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.03]"
           style={{ background: shopOnline ? '#10B981' : '#EF4444' }} />
         <div className="absolute -bottom-8 -right-8 w-24 h-24 rounded-full opacity-[0.04]"
-          style={{ background: '#F97316' }} />
+          style={{ background: '#0E9F6E' }} />
       </div>
 
       {/* ── Stats Grid ── */}
@@ -195,13 +195,13 @@ export default function ShopDashboardHome() {
         />
         <StatCard
           icon={Timer} label={t('avg_prep_time')} value={`${stats.avgPrepTime}m`}
-          trend="-2m" trendUp color="text-orange-600 dark:text-orange-400"
-          bgColor="bg-orange-500/8"
+          trend="-2m" trendUp color="text-orange-600 dark:text-[#0E9F6E]"
+          bgColor="bg-[#0E9F6E]/8"
         />
         <StatCard
           icon={Star} label={t('avg_rating')} value={stats.rating.toString()}
-          trend="+0.1" trendUp color="text-amber-600 dark:text-amber-400"
-          bgColor="bg-amber-500/8"
+          trend="+0.1" trendUp color="text-amber-600 dark:text-[#0E9F6E]"
+          bgColor="bg-[#0E9F6E]/8"
         />
       </div>
 
@@ -209,7 +209,7 @@ export default function ShopDashboardHome() {
       <div className="grid grid-cols-4 gap-2">
         {[
           { label: 'New', count: stats.newOrders, color: 'bg-blue-500', pulse: stats.newOrders > 0 },
-          { label: 'Preparing', count: stats.preparing, color: 'bg-orange-500', pulse: false },
+          { label: 'Preparing', count: stats.preparing, color: 'bg-[#0E9F6E]', pulse: false },
           { label: 'Completed', count: stats.completed, color: 'bg-emerald-500', pulse: false },
           { label: 'Cancelled', count: stats.cancelled, color: 'bg-red-500', pulse: false },
         ].map((item) => (
@@ -230,7 +230,7 @@ export default function ShopDashboardHome() {
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="p-4 border-b border-subtle flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-[#0E9F6E]/10 rounded-lg flex items-center justify-center">
                   <Bell size={15} className="text-accent" />
                 </div>
                 <div>
@@ -245,7 +245,7 @@ export default function ShopDashboardHome() {
 
             {newOrdersList.length === 0 ? (
               <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-orange-500/6 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-16 h-16 bg-[#0E9F6E]/6 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Package size={24} className="text-faint" />
                 </div>
                 <p className="text-sm font-bold text-muted">No new orders</p>
@@ -313,7 +313,7 @@ export default function ShopDashboardHome() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { href: '/dashboard/shop/orders', icon: ShoppingBag, label: 'Manage Orders', color: 'bg-blue-500/8 text-blue-600 dark:text-blue-400' },
-                { href: '/dashboard/shop/menu', icon: ChefHat, label: 'Edit Menu', color: 'bg-orange-500/8 text-orange-600 dark:text-orange-400' },
+                { href: '/dashboard/shop/menu', icon: ChefHat, label: 'Edit Menu', color: 'bg-[#0E9F6E]/8 text-orange-600 dark:text-[#0E9F6E]' },
                 { href: '/dashboard/shop/analytics', icon: TrendingUp, label: 'View Reports', color: 'bg-emerald-500/8 text-emerald-600 dark:text-emerald-400' },
                 { href: '/dashboard/shop/settings', icon: Users, label: 'Shop Settings', color: 'bg-purple-500/8 text-purple-600 dark:text-purple-400' },
               ].map(action => (
@@ -353,7 +353,7 @@ export default function ShopDashboardHome() {
                 { name: 'Meals Thali', qty: 12, revenue: '₹1,800' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--card-hover)] transition-colors">
-                  <span className="w-6 h-6 rounded-lg bg-orange-500/10 flex items-center justify-center text-[10px] font-black text-accent">
+                  <span className="w-6 h-6 rounded-lg bg-[#0E9F6E]/10 flex items-center justify-center text-[10px] font-black text-accent">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -419,9 +419,9 @@ function NewOrderCard({ order, onAccept, onReject, timeAgo }: {
   order: DemoOrder; onAccept: () => void; onReject: () => void; timeAgo: string;
 }) {
   return (
-    <div className="p-4 bg-orange-500/[0.02] hover:bg-orange-500/[0.04] transition-colors">
+    <div className="p-4 bg-[#0E9F6E]/[0.02] hover:bg-[#0E9F6E]/[0.04] transition-colors">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 bg-[#0E9F6E]/10 rounded-xl flex items-center justify-center flex-shrink-0">
           <ShoppingBag size={16} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
@@ -466,8 +466,8 @@ function OrderStatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
     placed: 'bg-blue-500',
     confirmed: 'bg-purple-500',
-    preparing: 'bg-orange-500',
-    ready: 'bg-amber-500',
+    preparing: 'bg-[#0E9F6E]',
+    ready: 'bg-[#0E9F6E]',
     picked_up: 'bg-indigo-500',
     on_the_way: 'bg-cyan-500',
     delivered: 'bg-emerald-500',

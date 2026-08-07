@@ -57,7 +57,7 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
         {/* Logo */}
         <div className="p-4 border-b border-subtle flex items-center justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+            <div className="w-9 h-9 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
               <Store size={16} className="text-white" />
             </div>
             {!collapsed && (
@@ -85,7 +85,7 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
                 className={`
                   flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200
                   ${isActive
-                    ? 'bg-orange-500/12 text-accent border border-orange-500/20 shadow-sm'
+                    ? 'bg-[#0E9F6E]/12 text-accent border border-[#0E9F6E]/20 shadow-sm'
                     : 'text-muted hover:bg-[var(--card-hover)] hover:text-secondary'
                   }
                   ${collapsed ? 'justify-center px-2' : ''}
@@ -95,7 +95,7 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
                 <item.icon size={16} className={isActive ? 'text-accent' : ''} />
                 {!collapsed && <span>{t(item.labelKey)}</span>}
                 {item.labelKey === 'nav_orders' && !collapsed && (
-                  <span className="ml-auto w-5 h-5 bg-orange-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
+                  <span className="ml-auto w-5 h-5 bg-[#0E9F6E] text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
                     •
                   </span>
                 )}
@@ -108,7 +108,7 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
         <div className="p-3 border-t border-subtle space-y-2">
           {!collapsed && (
             <div className="flex items-center gap-2 px-2 py-1.5">
-              <div className="w-8 h-8 bg-orange-500/10 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#0E9F6E]/10 rounded-full flex items-center justify-center">
                 <Store size={14} className="text-accent" />
               </div>
               <div className="flex-1 min-w-0">
@@ -161,7 +161,7 @@ export default function ShopDashboardLayout({ children }: { children: React.Reac
               {/* Dark/Light Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
-                className="btn-icon relative text-amber-500 hover:text-amber-600 transition-colors"
+                className="btn-icon relative text-[#0E9F6E] hover:text-amber-600 transition-colors"
                 title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
                 {isDark ? <Sun size={16} /> : <Moon size={16} />}

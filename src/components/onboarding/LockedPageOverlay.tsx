@@ -54,7 +54,7 @@ export default function LockedPageOverlay({
       <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
         <div className="glass-card rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-subtle">
           {/* Lock icon */}
-          <div className="w-14 h-14 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-[#0E9F6E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             {icon || <Lock size={24} className="text-accent" />}
           </div>
 

@@ -72,7 +72,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return (
       <div className="min-h-screen app-bg flex flex-col items-center justify-center">
         <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/25">
+          <div className="w-14 h-14 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/25">
             <Store size={24} className="text-white" />
           </div>
           <div className="flex items-center gap-2">

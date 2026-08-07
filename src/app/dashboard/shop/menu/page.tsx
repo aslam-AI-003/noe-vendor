@@ -204,10 +204,10 @@ export default function MenuManagerPage() {
         </div>
         <div className="flex gap-2">
           <div className="flex gap-1 surface rounded-xl p-1">
-            <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-orange-500 text-white' : 'text-muted'}`}>
+            <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-[#0E9F6E] text-white' : 'text-muted'}`}>
               <Grid3X3 size={14} />
             </button>
-            <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-orange-500 text-white' : 'text-muted'}`}>
+            <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-[#0E9F6E] text-white' : 'text-muted'}`}>
               <List size={14} />
             </button>
           </div>
@@ -222,7 +222,7 @@ export default function MenuManagerPage() {
             onClick={() => setSelectedCategory(cat)}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
               selectedCategory === cat
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                ? 'bg-[#0E9F6E] text-white shadow-lg shadow-orange-500/20'
                 : 'glass-sm text-muted hover:text-secondary'
             }`}
           >
@@ -234,7 +234,7 @@ export default function MenuManagerPage() {
       {/* ── Empty State ── */}
       {filtered.length === 0 && (
         <div className="glass-card rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 bg-orange-500/6 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-[#0E9F6E]/6 rounded-full flex items-center justify-center mx-auto mb-4">
             <Package size={28} className="text-faint" />
           </div>
           <h3 className="text-base font-bold text-muted">
@@ -286,7 +286,7 @@ export default function MenuManagerPage() {
                   <button
                     onClick={() => toggleStock(item.id)}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all ${
-                      item.isAvailable ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                      item.isAvailable ? 'bg-[#0E9F6E]/10 text-amber-600 hover:bg-[#0E9F6E]/20' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
                     }`}
                   >
                     {item.isAvailable ? <><EyeOff size={12} /> {t('mark_out')}</> : <><Eye size={12} /> {t('restock')}</>}
@@ -418,7 +418,7 @@ export default function MenuManagerPage() {
                       </button>
                     </div>
                   ) : (
-                    <label className="w-20 h-20 rounded-xl border-2 border-dashed border-orange-500/30 bg-orange-500/5 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-500/10 transition-all">
+                    <label className="w-20 h-20 rounded-xl border-2 border-dashed border-[#0E9F6E]/30 bg-[#0E9F6E]/5 flex flex-col items-center justify-center cursor-pointer hover:bg-[#0E9F6E]/10 transition-all">
                       <Camera size={16} className="text-accent mb-1" />
                       <span className="text-[9px] text-accent font-bold">Upload</span>
                       <input

@@ -171,7 +171,7 @@ export default function SettingsPage() {
           <button key={sec.id} onClick={() => setActiveSection(sec.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
               activeSection === sec.id
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                ? 'bg-[#0E9F6E] text-white shadow-lg shadow-orange-500/20'
                 : 'glass-sm text-muted hover:text-secondary'
             }`}>
             <sec.icon size={13} />
@@ -187,7 +187,7 @@ export default function SettingsPage() {
           <div className="glass-card rounded-2xl p-5">
             <h3 className="text-sm font-black text-body mb-4">{t('shop_identity')}</h3>
             <div className="flex gap-4 items-start">
-              <div className="w-20 h-20 rounded-2xl bg-orange-500/10 flex items-center justify-center border-2 border-dashed border-orange-500/30 cursor-pointer hover:bg-orange-500/15 transition-colors">
+              <div className="w-20 h-20 rounded-2xl bg-[#0E9F6E]/10 flex items-center justify-center border-2 border-dashed border-[#0E9F6E]/30 cursor-pointer hover:bg-[#0E9F6E]/15 transition-colors">
                 <Camera size={20} className="text-accent" />
               </div>
               <div className="flex-1 space-y-3">
@@ -345,8 +345,8 @@ export default function SettingsPage() {
           {/* Visual radius */}
           <div className="p-4 surface rounded-xl text-center">
             <div className="w-32 h-32 mx-auto relative">
-              <div className="absolute inset-0 rounded-full border-2 border-dashed border-orange-500/30 animate-pulse" />
-              <div className="absolute inset-4 rounded-full border border-orange-500/50" />
+              <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#0E9F6E]/30 animate-pulse" />
+              <div className="absolute inset-4 rounded-full border border-[#0E9F6E]/50" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div>
                   <MapPin size={20} className="text-accent mx-auto" />
@@ -537,9 +537,9 @@ function DocumentsKYCSection() {
   const statusConfig: Record<DocStatus, { badge: string; badgeClass: string; borderClass: string; iconBg: string }> = {
     not_uploaded: {
       badge: t('not_uploaded'),
-      badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25',
-      borderClass: 'border-amber-500/20',
-      iconBg: 'bg-amber-500/10',
+      badgeClass: 'bg-[#0E9F6E]/10 text-amber-700 dark:text-[#0E9F6E] border-[#0E9F6E]/25',
+      borderClass: 'border-[#0E9F6E]/20',
+      iconBg: 'bg-[#0E9F6E]/10',
     },
     uploaded: {
       badge: t('pending_review'),
@@ -626,7 +626,7 @@ function DocumentsKYCSection() {
                   <button
                     onClick={() => handleUploadClick(doc.id)}
                     disabled={uploading === doc.id}
-                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-accent border border-orange-500/20 hover:bg-orange-500/15 transition-all disabled:opacity-50">
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#0E9F6E]/10 text-accent border border-[#0E9F6E]/20 hover:bg-[#0E9F6E]/15 transition-all disabled:opacity-50">
                     {uploading === doc.id ? '⏳...' : t('upload_btn')}
                   </button>
                 )}
@@ -654,7 +654,7 @@ function DocumentsKYCSection() {
 
       {/* Overall status message */}
       <div className={`glass-sm rounded-xl p-4 text-center ${
-        isLive ? 'border border-emerald-500/20' : 'border border-amber-500/15'
+        isLive ? 'border border-emerald-500/20' : 'border border-[#0E9F6E]/15'
       }`}>
         {isLive ? (
           <>
@@ -664,7 +664,7 @@ function DocumentsKYCSection() {
           </>
         ) : (
           <>
-            <Shield size={20} className="text-amber-600 dark:text-amber-400 mx-auto mb-2" />
+            <Shield size={20} className="text-amber-600 dark:text-[#0E9F6E] mx-auto mb-2" />
             <p className="text-xs text-body font-bold">
               {completedRequired === requiredDocs.length
                 ? t('docs_submitted_waiting')
@@ -949,7 +949,7 @@ function OptionalDocumentsSection({ profile, setProfile }: OptionalDocProps) {
                 <button
                   onClick={() => handleSaveNumber(doc)}
                   disabled={saving === doc.id || !doc.numberValue.trim()}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-orange-500 text-white active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#0E9F6E] text-white active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                   {saving === doc.id ? (
                     <><span className="animate-spin">⏳</span> Saving...</>
                   ) : (

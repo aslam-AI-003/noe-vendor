@@ -86,19 +86,19 @@ export default function ShopRegisterPage() {
           <div className="glass-card p-5 text-left space-y-3 mb-6">
             <h3 className="font-bold text-body text-sm">What happens next?</h3>
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-[#0E9F6E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-[10px] font-bold text-accent">1</span>
               </div>
               <p className="text-xs text-muted">Admin verifies your shop details & documents</p>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-[#0E9F6E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-[10px] font-bold text-accent">2</span>
               </div>
               <p className="text-xs text-muted">Once approved, you&apos;ll get login credentials (Phone + Shop ID)</p>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-[#0E9F6E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-[10px] font-bold text-accent">3</span>
               </div>
               <p className="text-xs text-muted">Login to your Vendor Dashboard & start receiving orders!</p>
@@ -119,7 +119,7 @@ export default function ShopRegisterPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-2xl flex items-center justify-center shadow-lg">
               <Store size={26} className="text-white" />
             </div>
           </Link>
@@ -130,7 +130,7 @@ export default function ShopRegisterPage() {
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {[1, 2, 3].map((s) => (
-            <div key={s} className={`w-20 h-1.5 rounded-full ${s <= step ? 'bg-orange-500' : 'bg-[var(--bg3)]'}`} />
+            <div key={s} className={`w-20 h-1.5 rounded-full ${s <= step ? 'bg-[#0E9F6E]' : 'bg-[var(--bg3)]'}`} />
           ))}
         </div>
 
@@ -161,7 +161,7 @@ export default function ShopRegisterPage() {
                   {SEED_CATEGORIES.slice(0, 12).map((cat) => (
                     <button key={cat.id} type="button"
                       onClick={() => setCategory(cat.id)}
-                      className={`p-3 rounded-xl text-center border transition-all ${category === cat.id ? 'border-orange-500 bg-orange-500/10' : 'surface border-transparent hover:border-orange-400/40'}`}>
+                      className={`p-3 rounded-xl text-center border transition-all ${category === cat.id ? 'border-[#0E9F6E] bg-[#0E9F6E]/10' : 'surface border-transparent hover:border-[#0E9F6E]/40'}`}>
                       <span className="text-[10px] text-secondary">{cat.name}</span>
                     </button>
                   ))}
@@ -223,7 +223,7 @@ export default function ShopRegisterPage() {
                       }}
                       className={`text-left px-2.5 py-2 rounded-lg text-[10px] font-medium border transition-all ${
                         deliveryAreas.includes(area.id)
-                          ? 'bg-orange-500/10 border-orange-500/40 text-accent'
+                          ? 'bg-[#0E9F6E]/10 border-[#0E9F6E]/40 text-accent'
                           : 'border-transparent hover:bg-[var(--card-hover)] text-muted'
                       }`}
                     >

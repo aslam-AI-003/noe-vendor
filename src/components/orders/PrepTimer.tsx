@@ -55,19 +55,19 @@ export function PrepTimer({ acceptedAt, estimatedPrepTime, onMarkReady, onExtend
   // Color logic
   const getStatusColor = () => {
     if (isOverdue) return { bg: 'bg-red-500', text: 'text-red-600', bar: 'bg-red-500', ring: 'ring-red-500/30' };
-    if (remainingSeconds < 300) return { bg: 'bg-amber-500', text: 'text-amber-600', bar: 'bg-amber-500', ring: 'ring-amber-500/30' };
+    if (remainingSeconds < 300) return { bg: 'bg-[#0E9F6E]', text: 'text-amber-600', bar: 'bg-[#0E9F6E]', ring: 'ring-[#0E9F6E]/30' };
     return { bg: 'bg-emerald-500', text: 'text-emerald-600', bar: 'bg-emerald-500', ring: 'ring-emerald-500/30' };
   };
 
   const colors = getStatusColor();
 
   return (
-    <div className={`p-3 rounded-xl border ${isOverdue ? 'bg-red-500/5 border-red-500/20' : 'bg-orange-500/[0.03] border-orange-500/10'}`}>
+    <div className={`p-3 rounded-xl border ${isOverdue ? 'bg-red-500/5 border-red-500/20' : 'bg-[#0E9F6E]/[0.03] border-[#0E9F6E]/10'}`}>
       {/* Timer Display */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isOverdue ? 'bg-red-500/10' : 'bg-orange-500/10'}`}>
-            {isOverdue ? <AlertTriangle size={14} className="text-red-500" /> : <Timer size={14} className="text-orange-500" />}
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isOverdue ? 'bg-red-500/10' : 'bg-[#0E9F6E]/10'}`}>
+            {isOverdue ? <AlertTriangle size={14} className="text-red-500" /> : <Timer size={14} className="text-[#0E9F6E]" />}
           </div>
           <div>
             <p className="text-[10px] text-faint font-medium">
@@ -106,7 +106,7 @@ export function PrepTimer({ acceptedAt, estimatedPrepTime, onMarkReady, onExtend
         <button
           onClick={onExtendTime}
           disabled={isUpdating}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold hover:bg-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0E9F6E]/10 text-amber-600 dark:text-[#0E9F6E] text-xs font-bold hover:bg-[#0E9F6E]/20 transition-all active:scale-95 disabled:opacity-50"
         >
           <Plus size={13} />
           {t('add_5_min')}
@@ -138,7 +138,7 @@ export function PrepTimePicker({ onAccept, onCancel, isUpdating }: PrepTimePicke
   ];
 
   return (
-    <div className="p-3 border-t border-subtle bg-orange-500/[0.02] space-y-3">
+    <div className="p-3 border-t border-subtle bg-[#0E9F6E]/[0.02] space-y-3">
       <p className="text-xs font-bold text-body">{t('how_long_prepare')}</p>
       
       <div className="grid grid-cols-4 gap-2">
@@ -148,8 +148,8 @@ export function PrepTimePicker({ onAccept, onCancel, isUpdating }: PrepTimePicke
             onClick={() => setSelectedTime(opt.value)}
             className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-center transition-all active:scale-95 ${
               selectedTime === opt.value
-                ? 'border-orange-500 bg-orange-500/10 shadow-sm'
-                : 'border-transparent surface hover:border-orange-400/30'
+                ? 'border-[#0E9F6E] bg-[#0E9F6E]/10 shadow-sm'
+                : 'border-transparent surface hover:border-[#0E9F6E]/30'
             }`}
           >
             <span className="text-lg">{opt.emoji}</span>
@@ -162,7 +162,7 @@ export function PrepTimePicker({ onAccept, onCancel, isUpdating }: PrepTimePicke
         <button
           onClick={() => onAccept(selectedTime)}
           disabled={isUpdating}
-          className="flex-1 py-3 rounded-xl bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
+          className="flex-1 py-3 rounded-xl bg-[#0E9F6E] text-white text-xs font-bold hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
         >
           {isUpdating ? t('accepting') : `✅ ${t('accept_with_time')} (${selectedTime} min)`}
         </button>

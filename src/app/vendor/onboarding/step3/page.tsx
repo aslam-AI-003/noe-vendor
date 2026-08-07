@@ -237,7 +237,7 @@ export default function OnboardingStep3Page() {
       <div className="relative w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-3">
+          <div className="w-14 h-14 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-3">
             <Store size={24} className="text-white" />
           </div>
           <h1 className="text-lg font-black text-body">
@@ -252,7 +252,7 @@ export default function OnboardingStep3Page() {
             <div key={s} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                 s < 3 ? 'bg-emerald-500 text-white' :
-                s === 3 ? 'bg-orange-500 text-white scale-110 shadow-lg shadow-orange-500/30' :
+                s === 3 ? 'bg-[#0E9F6E] text-white scale-110 shadow-lg shadow-orange-500/30' :
                 'bg-[var(--bg3)] text-faint'
               }`}>
                 {s < 3 ? <CheckCircle2 size={14} /> : s}
@@ -290,8 +290,8 @@ export default function OnboardingStep3Page() {
               </div>
             ) : (
               <label htmlFor="aadhaar-input" className="block">
-                <div className="w-full h-44 rounded-2xl border-2 border-dashed border-orange-500/30 bg-orange-500/[0.03] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-orange-500/[0.06] transition-all active:scale-[0.98]">
-                  <div className="w-14 h-14 bg-orange-500/10 rounded-full flex items-center justify-center">
+                <div className="w-full h-44 rounded-2xl border-2 border-dashed border-[#0E9F6E]/30 bg-[#0E9F6E]/[0.03] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-[#0E9F6E]/[0.06] transition-all active:scale-[0.98]">
+                  <div className="w-14 h-14 bg-[#0E9F6E]/10 rounded-full flex items-center justify-center">
                     <Upload size={24} className="text-accent" />
                   </div>
                   <div className="text-center">

@@ -159,7 +159,7 @@ export default function OnboardingStep2Page() {
       <div className="relative w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-3">
+          <div className="w-14 h-14 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-3">
             <Store size={24} className="text-white" />
           </div>
           <h1 className="text-lg font-black text-body">
@@ -174,7 +174,7 @@ export default function OnboardingStep2Page() {
             <div key={s} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                 s < 2 ? 'bg-emerald-500 text-white' :
-                s === 2 ? 'bg-orange-500 text-white scale-110 shadow-lg shadow-orange-500/30' :
+                s === 2 ? 'bg-[#0E9F6E] text-white scale-110 shadow-lg shadow-orange-500/30' :
                 'bg-[var(--bg3)] text-faint'
               }`}>
                 {s < 2 ? <CheckCircle2 size={14} /> : s}
@@ -236,7 +236,7 @@ export default function OnboardingStep2Page() {
           {/* GPS Location */}
           <div className="flex items-center gap-3 p-3 surface rounded-xl">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              lat ? 'bg-emerald-500/10' : 'bg-orange-500/10'
+              lat ? 'bg-emerald-500/10' : 'bg-[#0E9F6E]/10'
             }`}>
               <MapPin size={16} className={lat ? 'text-emerald-600' : 'text-accent'} />
             </div>
@@ -253,7 +253,7 @@ export default function OnboardingStep2Page() {
             <button
               onClick={getLocation}
               disabled={locatingGPS}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-orange-500/10 text-accent border border-orange-500/20 hover:bg-orange-500/15 transition-all disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-[#0E9F6E]/10 text-accent border border-[#0E9F6E]/20 hover:bg-[#0E9F6E]/15 transition-all disabled:opacity-50"
             >
               {locatingGPS ? <Loader2 size={12} className="animate-spin" /> : lat ? 'Update' : 'Get GPS'}
             </button>
@@ -273,7 +273,7 @@ export default function OnboardingStep2Page() {
             <button
               onClick={() => setPaymentMode('upi')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                paymentMode === 'upi' ? 'bg-orange-500 text-white shadow-sm' : 'text-muted'
+                paymentMode === 'upi' ? 'bg-[#0E9F6E] text-white shadow-sm' : 'text-muted'
               }`}
             >
               <Smartphone size={13} /> UPI
@@ -281,7 +281,7 @@ export default function OnboardingStep2Page() {
             <button
               onClick={() => setPaymentMode('bank')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                paymentMode === 'bank' ? 'bg-orange-500 text-white shadow-sm' : 'text-muted'
+                paymentMode === 'bank' ? 'bg-[#0E9F6E] text-white shadow-sm' : 'text-muted'
               }`}
             >
               <CreditCard size={13} /> Bank Account

@@ -128,7 +128,7 @@ export default function VendorLoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#0E9F6E] to-[#087f58] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 mb-4">
             <span className="text-2xl font-black text-white">N</span>
           </div>
           <h1 className="text-xl font-black text-body">
@@ -140,7 +140,7 @@ export default function VendorLoginPage() {
         {step === 'phone' && (
           <div className="glass-card rounded-3xl p-6 space-y-5 animate-scale-in">
             <div className="text-center">
-              <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-[#0E9F6E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
                 <LogIn size={22} className="text-accent" />
               </div>
               <h2 className="text-lg font-bold text-body">Welcome back!</h2>
@@ -204,7 +204,7 @@ export default function VendorLoginPage() {
                   value={digit}
                   onChange={e => handleOTPChange(i, e.target.value)}
                   onKeyDown={e => handleOTPKeyDown(i, e)}
-                  className="w-14 h-14 text-center text-2xl font-black rounded-xl input-glass focus:border-orange-500"
+                  className="w-14 h-14 text-center text-2xl font-black rounded-xl input-glass focus:border-[#0E9F6E]"
                   maxLength={1}
                   inputMode="numeric"
                 />

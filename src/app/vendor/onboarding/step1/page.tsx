@@ -198,7 +198,7 @@ export default function OnboardingStep1Page() {
             <p className="text-[10px] text-faint">{t('upload_shop_photo')}</p>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">1</span>
+            <span className="w-6 h-6 rounded-full bg-[#0E9F6E] text-white text-[10px] font-bold flex items-center justify-center">1</span>
             <span className="text-[10px] text-faint">/ 3</span>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function OnboardingStep1Page() {
 
         {/* Shop Name Card */}
         <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-[#0E9F6E]/10 flex items-center justify-center">
             <Sparkles size={18} className="text-accent" />
           </div>
           <div>
@@ -221,7 +221,7 @@ export default function OnboardingStep1Page() {
         {/* Photo Preview / Upload Area */}
         {showCamera ? (
           // Camera View
-          <div className="relative rounded-2xl overflow-hidden border-2 border-orange-500/30 bg-black">
+          <div className="relative rounded-2xl overflow-hidden border-2 border-[#0E9F6E]/30 bg-black">
             <video
               ref={videoRef}
               autoPlay
@@ -238,9 +238,9 @@ export default function OnboardingStep1Page() {
               </button>
               <button
                 onClick={capturePhoto}
-                className="w-16 h-16 rounded-full bg-white border-4 border-orange-500 flex items-center justify-center hover:scale-105 transition-all active:scale-95"
+                className="w-16 h-16 rounded-full bg-white border-4 border-[#0E9F6E] flex items-center justify-center hover:scale-105 transition-all active:scale-95"
               >
-                <Camera size={24} className="text-orange-500" />
+                <Camera size={24} className="text-[#0E9F6E]" />
               </button>
               <div className="w-12 h-12" /> {/* Spacer for centering */}
             </div>
@@ -269,8 +269,8 @@ export default function OnboardingStep1Page() {
           </div>
         ) : (
           // Upload Area (Empty State)
-          <div className="rounded-2xl border-2 border-dashed border-orange-500/30 bg-orange-500/[0.03] p-8 text-center">
-            <div className="w-20 h-20 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-4">
+          <div className="rounded-2xl border-2 border-dashed border-[#0E9F6E]/30 bg-[#0E9F6E]/[0.03] p-8 text-center">
+            <div className="w-20 h-20 rounded-full bg-[#0E9F6E]/10 flex items-center justify-center mx-auto mb-4">
               <Camera size={32} className="text-accent" />
             </div>
             <h3 className="text-sm font-bold text-body mb-1">{t('upload_shop_photo')}</h3>
@@ -282,11 +282,11 @@ export default function OnboardingStep1Page() {
             <div className="flex flex-col gap-3 max-w-xs mx-auto">
               <button
                 onClick={startCamera}
-                className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-all active:scale-95"
+                className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#0E9F6E] text-white text-sm font-bold hover:bg-orange-600 transition-all active:scale-95"
               >
                 <Camera size={16} /> {t('take_photo')}
               </button>
-              <label className="flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-orange-500/30 text-accent text-sm font-bold cursor-pointer hover:bg-orange-500/5 transition-all active:scale-95">
+              <label className="flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-[#0E9F6E]/30 text-accent text-sm font-bold cursor-pointer hover:bg-[#0E9F6E]/5 transition-all active:scale-95">
                 <Image size={16} /> {t('choose_gallery')}
                 <input
                   id="shop-photo-file"
@@ -351,7 +351,7 @@ export default function OnboardingStep1Page() {
           <button
             onClick={handleSave}
             disabled={uploading || (!photoFile && !existingPhoto)}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#0E9F6E] text-white text-sm font-bold hover:bg-orange-600 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {uploading ? (
               <>

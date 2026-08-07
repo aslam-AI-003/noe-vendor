@@ -99,7 +99,7 @@ export function useOrderAlert() {
               icon: '🛎️',
               duration: 5000,
               style: {
-                background: '#F97316',
+                background: '#0E9F6E',
                 color: '#fff',
                 fontWeight: 'bold',
               },

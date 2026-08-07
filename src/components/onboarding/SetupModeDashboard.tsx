@@ -251,7 +251,7 @@ export default function SetupModeDashboard() {
                   <button
                     onClick={handleSubmitForReview}
                     disabled={submitting}
-                    className="mt-3 px-4 py-2 rounded-lg text-xs font-bold bg-orange-500 text-white active:scale-95 transition-all disabled:opacity-50">
+                    className="mt-3 px-4 py-2 rounded-lg text-xs font-bold bg-[#0E9F6E] text-white active:scale-95 transition-all disabled:opacity-50">
                     {submitting ? '⏳ Submitting...' : '🚀 Fixed! Resubmit for Review'}
                   </button>
                 )}
@@ -271,11 +271,11 @@ export default function SetupModeDashboard() {
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
 
       {/* ── Setup Mode Header ── */}
-      <div className="relative overflow-hidden rounded-2xl p-5 lg:p-6 border border-amber-500/15 bg-gradient-to-br from-amber-500/[0.04] to-orange-500/[0.03]">
+      <div className="relative overflow-hidden rounded-2xl p-5 lg:p-6 border border-[#0E9F6E]/15 bg-gradient-to-br from-amber-500/[0.04] to-[#087f58]/[0.03]">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#0E9F6E]/15 text-amber-700 dark:text-[#0E9F6E] border border-[#0E9F6E]/20">
                 {t('setup_mode')}
               </span>
             </div>
@@ -292,7 +292,7 @@ export default function SetupModeDashboard() {
                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   fill="none" stroke="var(--bg3)" strokeWidth="3" />
                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none" stroke="#F97316" strokeWidth="3"
+                  fill="none" stroke="#0E9F6E" strokeWidth="3"
                   strokeDasharray={`${progressPercent}, 100`}
                   strokeLinecap="round" />
               </svg>
@@ -303,7 +303,7 @@ export default function SetupModeDashboard() {
           </div>
         </div>
         {/* Decorative */}
-        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-orange-500 opacity-[0.02]" />
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-[#0E9F6E] opacity-[0.02]" />
       </div>
 
       {/* Status Banner (if pending/rejected) */}
@@ -348,7 +348,7 @@ export default function SetupModeDashboard() {
               {/* Action — Hide "Do It" if already submitted for review */}
               {!step.completed && step.href && profile.onboardingStatus !== 'pending_approval' && (
                 <Link href={step.href}
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-orange-500/10 text-accent border border-orange-500/20 hover:bg-orange-500/15 active:scale-95 transition-all shrink-0">
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-[#0E9F6E]/10 text-accent border border-[#0E9F6E]/20 hover:bg-[#0E9F6E]/15 active:scale-95 transition-all shrink-0">
                   {t('do_it')}
                 </Link>
               )}
@@ -454,7 +454,7 @@ export default function SetupModeDashboard() {
                   <span className="text-[10px] text-faint">• ⭐ New</span>
                 </div>
                 <div className="mt-2 flex gap-1.5">
-                  <span className="px-2 py-0.5 rounded-md bg-orange-500/10 text-[9px] font-bold text-accent">Free Delivery</span>
+                  <span className="px-2 py-0.5 rounded-md bg-[#0E9F6E]/10 text-[9px] font-bold text-accent">Free Delivery</span>
                   <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-[9px] font-bold text-emerald-700 dark:text-emerald-400">20 min</span>
                 </div>
               </div>

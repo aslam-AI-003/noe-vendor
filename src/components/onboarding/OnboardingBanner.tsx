@@ -35,7 +35,7 @@ export default function OnboardingBanner() {
 
   const bannerConfig: Record<string, { bg: string; icon: React.ReactNode; title: string; desc: string; action?: { label: string; href: string } }> = {
     otp_verified: {
-      bg: 'from-amber-500/10 to-orange-500/10 border-amber-500/20',
+      bg: 'from-amber-500/10 to-[#087f58]/10 border-[#0E9F6E]/20',
       icon: <AlertCircle size={18} className="text-amber-600" />,
       title: 'Complete your profile to go live!',
       desc: 'Add address & bank details (Step 2) to start receiving orders.',

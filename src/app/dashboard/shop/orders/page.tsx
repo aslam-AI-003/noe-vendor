@@ -137,7 +137,7 @@ export default function OrdersPage() {
           toast('🔔 New order received!', {
             icon: '🛎️',
             duration: 5000,
-            style: { background: '#F97316', color: '#fff', fontWeight: 'bold' },
+            style: { background: '#0E9F6E', color: '#fff', fontWeight: 'bold' },
           });
         }
         prevOrderCountRef.current = newCount;
@@ -213,7 +213,7 @@ export default function OrdersPage() {
     const colors: Record<string, string> = {
       new: 'bg-red-500 text-white animate-pulse',
       accepted: 'bg-blue-500 text-white',
-      preparing: 'bg-amber-500 text-white',
+      preparing: 'bg-[#0E9F6E] text-white',
       ready: 'bg-emerald-500 text-white',
       picked_up: 'bg-purple-500 text-white',
       delivered: 'bg-emerald-600 text-white',
@@ -282,7 +282,7 @@ export default function OrdersPage() {
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === tab.id ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'glass-sm text-muted'
+              activeTab === tab.id ? 'bg-[#0E9F6E] text-white shadow-lg shadow-orange-500/20' : 'glass-sm text-muted'
             }`}>
             <tab.icon size={13} /> {tab.label}
           </button>
@@ -378,7 +378,7 @@ export default function OrdersPage() {
                     <button
                       onClick={() => setShowPrepPicker(order.id)}
                       disabled={updatingOrder === order.id}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 active:scale-95"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0E9F6E] text-white text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 active:scale-95"
                     >
                       <CheckCircle2 size={14} />
                       {t('accept_order')}
