@@ -34,9 +34,9 @@ function getDb() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export function listenShopOrders(shopId: string, callback: (orders: NoxOrder[]) => void, shopName?: string): () => void {
   const firestore = getDb();
-  if (!firestore) return () => {};
+  if (!firestore) { callback([]); return () => {}; }
 
-  // Primary query: by shopId (Firestore vendor doc ID)
+  // Primary query: by shopId (has composite index: shopId + createdAt)
   const q1 = query(
     collection(firestore, 'orders'),
     where('shopId', '==', shopId),
@@ -46,60 +46,68 @@ export function listenShopOrders(shopId: string, callback: (orders: NoxOrder[]) 
 
   const allOrders = new Map<string, NoxOrder>();
   const unsubs: (() => void)[] = [];
+  let primaryFired = false;
 
   const emitAll = () => {
-    const sorted = Array.from(allOrders.values()).sort((a, b) =>
-      (b.createdAt || '').localeCompare(a.createdAt || '')
-    );
+    const sorted = Array.from(allOrders.values()).sort((a, b) => {
+      const aTime = typeof a.createdAt === 'string' ? a.createdAt : (a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000).toISOString() : '');
+      const bTime = typeof b.createdAt === 'string' ? b.createdAt : (b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000).toISOString() : '');
+      return bTime.localeCompare(aTime);
+    });
     callback(sorted);
   };
 
-  // Listener 1: by shopId
+  // Listener 1: by shopId (PRIMARY — always works, has index)
   unsubs.push(onSnapshot(q1, (snapshot: any) => {
     snapshot.docs.forEach((d: any) => {
       const data = d.data() as NoxOrder;
       allOrders.set(d.id, data);
     });
+    primaryFired = true;
     emitAll();
   }, (_error: any) => {
     console.error('Listen shop orders (shopId) error:', _error);
+    // Even on error, call back with empty so loading stops
+    if (!primaryFired) { primaryFired = true; callback([]); }
   }));
 
-  // Listener 2: by shopName (catches orders where customer saved seed shopId instead of vendor docId)
+  // Listener 2: by shopName (NO orderBy — avoids composite index requirement)
   if (shopName) {
-    const q2 = query(
+    try {
+      const q2 = query(
+        collection(firestore, 'orders'),
+        where('shopName', '==', shopName),
+        limit(50)
+      );
+      unsubs.push(onSnapshot(q2, (snapshot: any) => {
+        snapshot.docs.forEach((d: any) => {
+          const data = d.data() as NoxOrder;
+          allOrders.set(d.id, data);
+        });
+        emitAll();
+      }, (_error: any) => {
+        console.warn('shopName listener failed (index missing):', _error.message);
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
+  // Listener 3: by vendorId (NO orderBy — avoids composite index requirement)
+  try {
+    const q3 = query(
       collection(firestore, 'orders'),
-      where('shopName', '==', shopName),
-      orderBy('createdAt', 'desc'),
+      where('vendorId', '==', shopId),
       limit(50)
     );
-    unsubs.push(onSnapshot(q2, (snapshot: any) => {
+    unsubs.push(onSnapshot(q3, (snapshot: any) => {
       snapshot.docs.forEach((d: any) => {
         const data = d.data() as NoxOrder;
         allOrders.set(d.id, data);
       });
       emitAll();
     }, (_error: any) => {
-      console.error('Listen shop orders (shopName) error:', _error);
+      console.warn('vendorId listener failed (index missing):', _error.message);
     }));
-  }
-
-  // Listener 3: by vendorId field (if customer saved it)
-  const q3 = query(
-    collection(firestore, 'orders'),
-    where('vendorId', '==', shopId),
-    orderBy('createdAt', 'desc'),
-    limit(50)
-  );
-  unsubs.push(onSnapshot(q3, (snapshot: any) => {
-    snapshot.docs.forEach((d: any) => {
-      const data = d.data() as NoxOrder;
-      allOrders.set(d.id, data);
-    });
-    emitAll();
-  }, (_error: any) => {
-    // vendorId field may not exist on all orders — that's fine
-  }));
+  } catch (e) { /* ignore */ }
 
   return () => unsubs.forEach(u => u());
 }
