@@ -29,26 +29,79 @@ function getDb() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// LISTEN NEW ORDERS — Real-time listener for incoming orders
+// LISTEN SHOP ORDERS — Real-time listener for incoming orders
+// Queries by shopId AND shopName for maximum matching (handles seed IDs + Firestore IDs)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-export function listenShopOrders(shopId: string, callback: (orders: NoxOrder[]) => void): () => void {
+export function listenShopOrders(shopId: string, callback: (orders: NoxOrder[]) => void, shopName?: string): () => void {
   const firestore = getDb();
   if (!firestore) return () => {};
 
-  const q = query(
+  // Primary query: by shopId (Firestore vendor doc ID)
+  const q1 = query(
     collection(firestore, 'orders'),
     where('shopId', '==', shopId),
     orderBy('createdAt', 'desc'),
     limit(50)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs.map(doc => doc.data() as NoxOrder);
-    callback(orders);
-  }, (error) => {
-    console.error('Listen shop orders error:', error);
-    callback([]);
-  });
+  const allOrders = new Map<string, NoxOrder>();
+  const unsubs: (() => void)[] = [];
+
+  const emitAll = () => {
+    const sorted = Array.from(allOrders.values()).sort((a, b) =>
+      (b.createdAt || '').localeCompare(a.createdAt || '')
+    );
+    callback(sorted);
+  };
+
+  // Listener 1: by shopId
+  unsubs.push(onSnapshot(q1, (snapshot: any) => {
+    snapshot.docs.forEach((d: any) => {
+      const data = d.data() as NoxOrder;
+      allOrders.set(d.id, data);
+    });
+    emitAll();
+  }, (_error: any) => {
+    console.error('Listen shop orders (shopId) error:', _error);
+  }));
+
+  // Listener 2: by shopName (catches orders where customer saved seed shopId instead of vendor docId)
+  if (shopName) {
+    const q2 = query(
+      collection(firestore, 'orders'),
+      where('shopName', '==', shopName),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+    unsubs.push(onSnapshot(q2, (snapshot: any) => {
+      snapshot.docs.forEach((d: any) => {
+        const data = d.data() as NoxOrder;
+        allOrders.set(d.id, data);
+      });
+      emitAll();
+    }, (_error: any) => {
+      console.error('Listen shop orders (shopName) error:', _error);
+    }));
+  }
+
+  // Listener 3: by vendorId field (if customer saved it)
+  const q3 = query(
+    collection(firestore, 'orders'),
+    where('vendorId', '==', shopId),
+    orderBy('createdAt', 'desc'),
+    limit(50)
+  );
+  unsubs.push(onSnapshot(q3, (snapshot: any) => {
+    snapshot.docs.forEach((d: any) => {
+      const data = d.data() as NoxOrder;
+      allOrders.set(d.id, data);
+    });
+    emitAll();
+  }, (_error: any) => {
+    // vendorId field may not exist on all orders — that's fine
+  }));
+
+  return () => unsubs.forEach(u => u());
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

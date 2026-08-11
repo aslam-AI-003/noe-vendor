@@ -60,6 +60,7 @@ export default function OrdersPage() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [vendorId, setVendorId] = useState('');
+  const [shopName, setShopName] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active');
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
@@ -87,12 +88,15 @@ export default function OrdersPage() {
             localStorage.setItem('noe-vendor-profile', JSON.stringify(updatedProfile));
             
             setVendorId(correctId);
+            setShopName(correctData.shopName || profile.shopName || '');
           }
         }).catch(() => {
           setVendorId(profile.id);
+          setShopName(profile.shopName || '');
         });
       } else {
         setVendorId(profile.id);
+        setShopName(profile.shopName || '');
       }
     }
   }, []);
@@ -103,9 +107,9 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!vendorId || !db) return;
 
-    // Listen to ALL orders for this shop (NOX service uses shopId field)
+    // Listen to ALL orders for this shop (queries by shopId + shopName + vendorId)
     const unsubscribe = listenShopOrders(vendorId, (noxOrders: NoxOrder[]) => {
-      // Convert NoxOrder[] to local Order format for display
+      // Convert NoxOrder[] to local Order format for display (shopName passed as 3rd arg below)
       const mappedOrders: Order[] = noxOrders.map(o => ({
         id: o.orderId,
         orderId: o.orderId,
@@ -139,7 +143,7 @@ export default function OrdersPage() {
 
       setOrders(mappedOrders);
       setLoading(false);
-    });
+    }, shopName || undefined);
 
     // Also listen to old-format orders (backward compatibility)
     let unsubOld: (() => void) | undefined;
@@ -171,7 +175,7 @@ export default function OrdersPage() {
       unsubscribe();
       if (unsubOld) unsubOld();
     };
-  }, [vendorId]);
+  }, [vendorId, shopName]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // UPDATE STATUS — Uses NOX Order Service
