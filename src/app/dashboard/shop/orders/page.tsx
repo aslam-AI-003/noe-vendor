@@ -397,7 +397,19 @@ export default function OrdersPage() {
                     <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
                       <Truck size={12} className="text-blue-500" />
                       <span className="text-[10px] text-blue-600 font-bold">🛵 Rider: {order.riderName}</span>
+                      {order.riderPhone && <span className="text-[10px] text-faint">📞 {order.riderPhone}</span>}
                       <span className="text-[10px] text-faint ml-auto">Heading to shop</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Picked up by rider info */}
+                {order.riderName && order.status === 'picked_up' && (
+                  <div className="px-4 pb-2">
+                    <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center gap-2">
+                      <Truck size={12} className="text-purple-500" />
+                      <span className="text-[10px] text-purple-600 font-bold">📦 Picked up by {order.riderName}</span>
+                      {order.riderPhone && <span className="text-[10px] text-faint">📞 {order.riderPhone}</span>}
                     </div>
                   </div>
                 )}
