@@ -228,6 +228,7 @@ export async function markPreparing(orderId: string, vendorId: string): Promise<
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MARK READY — Order ready for pickup by rider
+// Generates deliveryOTP here! Vendor shares with rider, customer also sees it.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export async function markReady(orderId: string, vendorId: string): Promise<boolean> {
   const firestore = getDb();
@@ -239,20 +240,28 @@ export async function markReady(orderId: string, vendorId: string): Promise<bool
     if (!orderSnap.exists()) return false;
 
     const order = orderSnap.data() as NoxOrder;
+    
+    // Generate delivery OTP NOW (when vendor marks ready)
+    // This OTP will be:
+    //   - Shown to vendor (to share with rider at pickup)
+    //   - Shown to customer (to share with rider at delivery)
+    const deliveryOTP = Math.floor(1000 + Math.random() * 9000).toString();
+
     const updatedTimeline = [...order.timeline, {
       status: 'ready' as NoxOrderStatus,
       timestamp: new Date().toISOString(),
-      note: 'Order ready for pickup',
+      note: `Order ready for pickup — OTP: ${deliveryOTP}`,
       updatedBy: vendorId,
     }];
 
     await updateDoc(orderRef, {
       status: 'ready',
+      deliveryOTP,
       updatedAt: serverTimestamp(),
       timeline: updatedTimeline,
     });
 
-    console.log('✅ Order marked ready:', orderId);
+    console.log('✅ Order marked ready with OTP:', orderId, deliveryOTP);
     return true;
   } catch (error) {
     console.error('Error marking ready:', error);
