@@ -44,13 +44,18 @@ interface Order {
   estimatedDelivery?: string;
   deliveryOTP?: string;
   itemCount?: number;
+  riderName?: string;
+  riderPhone?: string;
 }
 
 // Map NOX status to vendor display status
 function normalizeStatus(status: string): string {
   // NOX uses 'placed', old system uses 'new'
   if (status === 'placed') return 'new';
-  if (status === 'rider_assigned' || status === 'picked_up' || status === 'in_transit') return 'picked_up';
+  // rider_assigned is legacy (rider accept no longer changes status)
+  // picked_up/in_transit/on_the_way = rider has picked up
+  if (status === 'rider_assigned') return 'ready'; // fallback: treat as ready
+  if (status === 'picked_up' || status === 'in_transit' || status === 'on_the_way') return 'picked_up';
   return status;
 }
 
@@ -127,6 +132,8 @@ export default function OrdersPage() {
         estimatedDelivery: o.estimatedDelivery,
         deliveryOTP: o.deliveryOTP,
         itemCount: o.itemCount,
+        riderName: o.riderName || undefined,
+        riderPhone: o.riderPhone || undefined,
       }));
 
       // Detect new orders (play sound)
@@ -383,6 +390,17 @@ export default function OrdersPage() {
                   )}
                   <span className="flex items-center gap-1"><IndianRupee size={10} /> {order.paymentMethod}</span>
                 </div>
+
+                {/* Rider assigned info (shows when rider accepted — parallel with vendor preparing) */}
+                {order.riderName && ['accepted', 'preparing', 'ready'].includes(order.status) && (
+                  <div className="px-4 pb-2">
+                    <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
+                      <Truck size={12} className="text-blue-500" />
+                      <span className="text-[10px] text-blue-600 font-bold">🛵 Rider: {order.riderName}</span>
+                      <span className="text-[10px] text-faint ml-auto">Heading to shop</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Delivery OTP Display (for ready orders) */}
                 {order.status === 'ready' && order.deliveryOTP && (
